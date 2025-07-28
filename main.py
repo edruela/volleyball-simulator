@@ -2,13 +2,18 @@
 Cloud Functions entry points for Volleyball Manager
 """
 
-from typing import Dict, Any, Union, Tuple
+from typing import Dict, Any, Union, Tuple, Optional
 from flask import Flask, Request
 from flask_restx import Api, Resource, fields
 from google.cloud import firestore
 from game_engine.match_simulation import VolleyballSimulator
 from game_engine.season_management import SeasonManager
 from utils.firestore_helpers import FirestoreHelper
+
+db = None
+firestore_helper: Optional[FirestoreHelper] = None
+volleyball_sim: Optional[VolleyballSimulator] = None
+season_manager: Optional[SeasonManager] = None
 
 try:
     db = firestore.Client()
