@@ -16,7 +16,7 @@ volleyball_sim: Optional[VolleyballSimulator] = None
 season_manager: Optional[SeasonManager] = None
 
 try:
-    db = firestore.Client()
+    db = firestore.Client(project=os.getenv("GOOGLE_CLOUD_PROJECT", "invweb-lab-public-2"))
     firestore_helper = FirestoreHelper(db)
     volleyball_sim = VolleyballSimulator()
     season_manager = SeasonManager(firestore_helper)
