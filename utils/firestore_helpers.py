@@ -242,12 +242,12 @@ class FirestoreHelper:
                 country_ref.set(country)
 
             from utils.constants import COUNTRIES
-            
+
             for country_id, country_data in COUNTRIES.items():
                 country_doc = {
                     "id": country_id,
                     "name": country_data["name"],
-                    "modifiers": country_data["modifiers"]
+                    "modifiers": country_data["modifiers"],
                 }
                 country_ref = self.db.collection("countries").document(country_id)
                 country_ref.set(country_doc)
@@ -272,7 +272,7 @@ class FirestoreHelper:
         except Exception as e:
             print(f"Error creating sample data: {e}")
             raise
-    
+
     def create_season(self, season) -> bool:
         """Create a new season in Firestore"""
         try:
@@ -282,30 +282,36 @@ class FirestoreHelper:
         except Exception as e:
             print(f"Error creating season: {e}")
             return False
-    
+
     def create_competition(self, competition) -> bool:
         """Create a new competition in Firestore"""
         try:
-            competition_ref = self.db.collection("competitions").document(competition.id)
+            competition_ref = self.db.collection("competitions").document(
+                competition.id
+            )
             competition_ref.set(competition.to_dict())
             return True
         except Exception as e:
             print(f"Error creating competition: {e}")
             return False
-    
-    def get_clubs_by_country_and_tier(self, country_id: str, tier: int) -> List[Dict[str, Any]]:
+
+    def get_clubs_by_country_and_tier(
+        self, country_id: str, tier: int
+    ) -> List[Dict[str, Any]]:
         """Get all clubs for a specific country and division tier"""
         try:
             clubs_ref = self.db.collection("clubs")
-            query = clubs_ref.where("countryId", "==", country_id).where("divisionTier", "==", tier)
+            query = clubs_ref.where("countryId", "==", country_id).where(
+                "divisionTier", "==", tier
+            )
             docs = query.stream()
-            
+
             clubs = []
             for doc in docs:
                 club_data = doc.to_dict()
                 club_data["id"] = doc.id
                 clubs.append(club_data)
-            
+
             return clubs
         except Exception as e:
             print(f"Error getting clubs by country and tier: {e}")

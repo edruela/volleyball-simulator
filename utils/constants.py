@@ -105,7 +105,14 @@ COUNTRIES = {
     },
     "riverside": {
         "name": "Riverside",
-        "modifiers": {"adaptability": 10, "stamina": 5, "strength": 5, "agility": 5, "jumpHeight": 5, "speed": 5},
+        "modifiers": {
+            "adaptability": 10,
+            "stamina": 5,
+            "strength": 5,
+            "agility": 5,
+            "jumpHeight": 5,
+            "speed": 5,
+        },
     },
     "windlands": {
         "name": "Windlands",

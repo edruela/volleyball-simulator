@@ -167,19 +167,21 @@ def start_season(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str]
 
         if not season_name:
             return {"error": "Missing seasonName parameter"}, 400
-        
+
         if duration_minutes is None:
             return {"error": "Missing durationMinutes parameter"}, 400
-        
+
         if not isinstance(duration_minutes, int) or duration_minutes <= 0:
             return {"error": "durationMinutes must be a positive integer"}, 400
 
         if participating_countries is not None:
             if not isinstance(participating_countries, list):
                 return {"error": "participatingCountries must be a list"}, 400
-            
+
             from utils.constants import COUNTRIES
-            invalid_countries = [c for c in participating_countries if c not in COUNTRIES]
+            invalid_countries = [
+                c for c in participating_countries if c not in COUNTRIES
+            ]
             if invalid_countries:
                 return {"error": f"Invalid countries: {invalid_countries}"}, 400
 
@@ -195,7 +197,7 @@ def start_season(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str]
                 "message": result.message,
                 "competitionsCreated": result.competitions_created,
                 "participatingCountries": result.participating_countries,
-                "durationMinutes": duration_minutes
+                "durationMinutes": duration_minutes,
             }
         else:
             return {"error": result.message}, 400

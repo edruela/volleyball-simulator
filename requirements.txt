@@ -3,6 +3,8 @@ google-cloud-firestore>=2.13.1
 functions-framework>=3.5.0
 numpy>=1.26.0
 python-dateutil>=2.8.2
+flask>=2.3.0
+flask-restx>=1.3.0
 
 # Development dependencies
 pytest>=7.4.0
