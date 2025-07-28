@@ -15,30 +15,50 @@ from utils.firestore_helpers import FirestoreHelper
 def main():
     """Load mock data into Firestore"""
     try:
-        db = firestore.Client(project=os.getenv("GOOGLE_CLOUD_PROJECT", "invweb-lab-public-2"))
+        db = firestore.Client(
+            project=os.getenv("GOOGLE_CLOUD_PROJECT", "invweb-lab-public-2")
+        )
         helper = FirestoreHelper(db)
 
         print("Loading mock data into Firestore...")
         print("This will create:")
 
         # Retrieve country names from sample data
-        country_names = helper.get_sample_country_names() if hasattr(helper, "get_sample_country_names") else ["volcania", "coastalia", "forestland"]
+        country_names = (
+            helper.get_sample_country_names()
+            if hasattr(helper, "get_sample_country_names")
+            else ["volcania", "coastalia", "forestland"]
+        )
         print(f"- {len(country_names)} countries ({', '.join(country_names)})")
 
         # Dynamically calculate club and division info
-        sample_clubs = helper.get_sample_clubs() if hasattr(helper, "get_sample_clubs") else []
-        divisions = set(club.get("divisionTier") for club in sample_clubs if "divisionTier" in club)
+        sample_clubs = (
+            helper.get_sample_clubs() if hasattr(helper, "get_sample_clubs") else []
+        )
+        divisions = set(
+            club.get("divisionTier") for club in sample_clubs if "divisionTier" in club
+        )
         clubs_per_division = {}
         for division in divisions:
-            clubs_per_division[division] = sum(1 for club in sample_clubs if club.get("divisionTier") == division)
+            clubs_per_division[division] = sum(
+                1 for club in sample_clubs if club.get("divisionTier") == division
+            )
         total_clubs = len(sample_clubs)
         divisions_str = ", ".join(str(d) for d in sorted(divisions))
-        clubs_per_division_str = ", ".join(f"{clubs_per_division[d]} clubs in division {d}" for d in sorted(divisions))
-        print(f"- {total_clubs} clubs ({clubs_per_division_str}, divisions {divisions_str}, across {len(country_names)} countries)")
+        clubs_per_division_str = ", ".join(
+            f"{clubs_per_division[d]} clubs in division {d}" for d in sorted(divisions)
+        )
+        print(
+            f"- {total_clubs} clubs ({clubs_per_division_str}, divisions {divisions_str}, across {len(country_names)} countries)"
+        )
 
         # Dynamically calculate player info if possible
-        sample_players = helper.get_sample_players() if hasattr(helper, "get_sample_players") else []
-        players_per_club = round(len(sample_players) / total_clubs) if total_clubs > 0 else 0
+        sample_players = (
+            helper.get_sample_players() if hasattr(helper, "get_sample_players") else []
+        )
+        players_per_club = (
+            round(len(sample_players) / total_clubs) if total_clubs > 0 else 0
+        )
         print(f"- ~{len(sample_players)} players ({players_per_club} players per club)")
 
         helper.create_sample_data()

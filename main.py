@@ -3,6 +3,7 @@ Cloud Functions entry points for Volleyball Manager
 """
 
 from typing import Dict, Any, Union, Tuple, Optional
+import os
 from flask import Flask, Request
 from flask_restx import Api, Resource, fields
 from google.cloud import firestore
@@ -16,7 +17,9 @@ volleyball_sim: Optional[VolleyballSimulator] = None
 season_manager: Optional[SeasonManager] = None
 
 try:
-    db = firestore.Client(project=os.getenv("GOOGLE_CLOUD_PROJECT", "invweb-lab-public-2"))
+    db = firestore.Client(
+        project=os.getenv("GOOGLE_CLOUD_PROJECT", "invweb-lab-public-2")
+    )
     firestore_helper = FirestoreHelper(db)
     volleyball_sim = VolleyballSimulator()
     season_manager = SeasonManager(firestore_helper)
