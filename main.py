@@ -3,7 +3,7 @@ Cloud Functions entry points for Volleyball Manager
 """
 
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Union, Tuple
 from flask import Request
 from google.cloud import firestore
 from game_engine.match_simulation import VolleyballSimulator
@@ -16,7 +16,9 @@ firestore_helper = FirestoreHelper(db)
 volleyball_sim = VolleyballSimulator()
 
 
-def simulate_match(request: Request) -> Dict[str, Any]:
+def simulate_match(
+    request: Request,
+) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
     """
     Cloud Function to simulate a volleyball match
     """
@@ -71,7 +73,7 @@ def simulate_match(request: Request) -> Dict[str, Any]:
         return {"error": f"Match simulation failed: {str(e)}"}, 500
 
 
-def get_club(request: Request) -> Dict[str, Any]:
+def get_club(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
     """
     Cloud Function to get club information
     """
@@ -93,7 +95,7 @@ def get_club(request: Request) -> Dict[str, Any]:
         return {"error": f"Failed to get club: {str(e)}"}, 500
 
 
-def create_club(request: Request) -> Dict[str, Any]:
+def create_club(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
     """
     Cloud Function to create a new club
     """
@@ -123,7 +125,9 @@ def create_club(request: Request) -> Dict[str, Any]:
         return {"error": f"Failed to create club: {str(e)}"}, 500
 
 
-def get_league_standings(request: Request) -> Dict[str, Any]:
+def get_league_standings(
+    request: Request,
+) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
     """
     Cloud Function to get league standings
     """

@@ -70,7 +70,7 @@ class Player:
     contract: PlayerContract
     stats: PlayerStats
     nickname: Optional[str] = None
-    created_at: datetime = None
+    created_at: Optional[datetime] = None
 
     def __post_init__(self):
         if self.created_at is None:
@@ -180,6 +180,7 @@ class Player:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert player to dictionary for Firestore storage"""
+        assert self.created_at is not None
         data = asdict(self)
         data["createdAt"] = self.created_at.isoformat()
         return data

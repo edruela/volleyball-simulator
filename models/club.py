@@ -52,12 +52,12 @@ class Club:
     owner_id: Optional[str] = None
     is_player_club: bool = False
     founded_year: int = 2024
-    colors: Dict[str, str] = None
-    finances: ClubFinances = None
-    facilities: ClubFacilities = None
-    stats: ClubStats = None
-    default_tactics: ClubTactics = None
-    created_at: datetime = None
+    colors: Optional[Dict[str, str]] = None
+    finances: Optional[ClubFinances] = None
+    facilities: Optional[ClubFacilities] = None
+    stats: Optional[ClubStats] = None
+    default_tactics: Optional[ClubTactics] = None
+    created_at: Optional[datetime] = None
 
     def __post_init__(self):
         if self.colors is None:
@@ -97,6 +97,7 @@ class Club:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert club to dictionary for Firestore storage"""
+        assert self.created_at is not None
         data = asdict(self)
         data["countryId"] = data.pop("country_id")
         data["divisionTier"] = data.pop("division_tier")
@@ -156,6 +157,7 @@ class Club:
 
     def update_stats(self, won: bool, sets_for: int, sets_against: int):
         """Update club stats after a match"""
+        assert self.stats is not None
         if won:
             self.stats.wins += 1
             self.stats.points += 3
@@ -167,6 +169,8 @@ class Club:
 
     def get_overall_rating(self) -> float:
         """Calculate overall club rating based on facilities and finances"""
+        assert self.facilities is not None
+        assert self.finances is not None
         facility_rating = (
             self.facilities.training_level * 10
             + self.facilities.youth_academy * 5
