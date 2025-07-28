@@ -30,7 +30,7 @@ class CompetitionFormatDetails:
     teams_count: int
     group_size: Optional[int] = None
     playoffs_teams: Optional[int] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "type": self.type.value,
@@ -38,7 +38,7 @@ class CompetitionFormatDetails:
             "groupSize": self.group_size,
             "playoffsTeams": self.playoffs_teams,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CompetitionFormatDetails":
         return cls(
@@ -54,14 +54,14 @@ class CompetitionParticipant:
     club_id: str
     seeded: bool = False
     group_id: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "clubId": self.club_id,
             "seeded": self.seeded,
             "groupId": self.group_id,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CompetitionParticipant":
         return cls(
@@ -79,7 +79,7 @@ class CompetitionPrizes:
     participation: float
     per_win: float = 0.0
     per_goal: float = 0.0
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "winner": self.winner,
@@ -89,9 +89,9 @@ class CompetitionPrizes:
             "performanceBonus": {
                 "perWin": self.per_win,
                 "perGoal": self.per_goal,
-            }
+            },
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CompetitionPrizes":
         performance_bonus = data.get("performanceBonus", {})
@@ -114,7 +114,7 @@ class CompetitionStanding:
     losses: int
     sets_for: int
     sets_against: int
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "clubId": self.club_id,
@@ -125,7 +125,7 @@ class CompetitionStanding:
             "setsFor": self.sets_for,
             "setsAgainst": self.sets_against,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CompetitionStanding":
         return cls(
@@ -144,17 +144,19 @@ class CompetitionResults:
     winner: Optional[str] = None
     runner_up: Optional[str] = None
     standings: List[CompetitionStanding] = field(default_factory=list)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "winner": self.winner,
             "runnerUp": self.runner_up,
             "standings": [standing.to_dict() for standing in self.standings],
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CompetitionResults":
-        standings = [CompetitionStanding.from_dict(s) for s in data.get("standings", [])]
+        standings = [
+            CompetitionStanding.from_dict(s) for s in data.get("standings", [])
+        ]
         return cls(
             winner=data.get("winner"),
             runner_up=data.get("runnerUp"),
@@ -179,13 +181,13 @@ class Competition:
     results: Optional[CompetitionResults] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
     def __post_init__(self):
         if self.created_at is None:
             self.created_at = datetime.now()
         if self.updated_at is None:
             self.updated_at = datetime.now()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert Competition to dictionary for Firestore storage"""
         return {
@@ -205,24 +207,26 @@ class Competition:
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Competition":
         """Create Competition from Firestore dictionary"""
         format_details = None
         if data.get("format"):
             format_details = CompetitionFormatDetails.from_dict(data["format"])
-        
-        participants = [CompetitionParticipant.from_dict(p) for p in data.get("participants", [])]
-        
+
+        participants = [
+            CompetitionParticipant.from_dict(p) for p in data.get("participants", [])
+        ]
+
         prizes = None
         if data.get("prizes"):
             prizes = CompetitionPrizes.from_dict(data["prizes"])
-        
+
         results = None
         if data.get("results"):
             results = CompetitionResults.from_dict(data["results"])
-        
+
         return cls(
             id=data["id"],
             name=data["name"],
@@ -237,6 +241,14 @@ class Competition:
             status=CompetitionStatus(data.get("status", "upcoming")),
             current_round=data.get("currentRound"),
             results=results,
-            created_at=datetime.fromisoformat(data["createdAt"]) if data.get("createdAt") else None,
-            updated_at=datetime.fromisoformat(data["updatedAt"]) if data.get("updatedAt") else None,
+            created_at=(
+                datetime.fromisoformat(data["createdAt"])
+                if data.get("createdAt")
+                else None
+            ),
+            updated_at=(
+                datetime.fromisoformat(data["updatedAt"])
+                if data.get("updatedAt")
+                else None
+            ),
         )

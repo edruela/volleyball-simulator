@@ -179,6 +179,7 @@ def start_season(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str]
                 return {"error": "participatingCountries must be a list"}, 400
 
             from utils.constants import COUNTRIES
+
             invalid_countries = [
                 c for c in participating_countries if c not in COUNTRIES
             ]
@@ -188,7 +189,7 @@ def start_season(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str]
         result = season_manager.create_season(
             season_name=season_name,
             duration_minutes=duration_minutes,
-            participating_countries=participating_countries
+            participating_countries=participating_countries,
         )
 
         if result.success:

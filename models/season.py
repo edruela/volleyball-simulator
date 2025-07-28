@@ -20,13 +20,13 @@ class Season:
     participating_countries: List[str] = field(default_factory=list)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
     def __post_init__(self):
         if self.created_at is None:
             self.created_at = datetime.now()
         if self.updated_at is None:
             self.updated_at = datetime.now()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert Season to dictionary for Firestore storage"""
         return {
@@ -39,7 +39,7 @@ class Season:
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Season":
         """Create Season from Firestore dictionary"""
@@ -50,6 +50,14 @@ class Season:
             start_date=datetime.fromisoformat(data["startDate"]),
             status=SeasonStatus(data["status"]),
             participating_countries=data.get("participatingCountries", []),
-            created_at=datetime.fromisoformat(data["createdAt"]) if data.get("createdAt") else None,
-            updated_at=datetime.fromisoformat(data["updatedAt"]) if data.get("updatedAt") else None,
+            created_at=(
+                datetime.fromisoformat(data["createdAt"])
+                if data.get("createdAt")
+                else None
+            ),
+            updated_at=(
+                datetime.fromisoformat(data["updatedAt"])
+                if data.get("updatedAt")
+                else None
+            ),
         )
