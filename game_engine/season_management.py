@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, cast
 from dataclasses import dataclass
 
 from models.season import Season, SeasonStatus
@@ -31,7 +31,7 @@ class SeasonManager:
 
     def __init__(self, firestore_helper: FirestoreHelper):
         self.firestore_helper = firestore_helper
-        self.season_config = GAME_CONFIG["SEASON"]
+        self.season_config = cast(Dict[str, Any], GAME_CONFIG["SEASON"])
 
     def create_season(
         self,
