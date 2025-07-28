@@ -202,8 +202,8 @@ functions-framework --target=simulate_match --source=main.py --port=8080
 curl -X POST http://localhost:8080 \
   -H "Content-Type: application/json" \
   -d '{
-    "home_club_id": "test_home",
-    "away_club_id": "test_away"
+    "homeClubId": "test_home",
+    "awayClubId": "test_away"
   }'
 ```
 
@@ -224,7 +224,71 @@ gcloud beta emulators firestore start --host-port=localhost:8080
 export FIRESTORE_EMULATOR_HOST=localhost:8080
 ```
 
-### Using Mock Data
+### Loading Mock Data for Testing
+
+For realistic local testing, you can load mock data into your Firestore emulator:
+
+```bash
+# Start Firestore emulator first
+export FIRESTORE_EMULATOR_HOST=localhost:8080
+gcloud beta emulators firestore start --host-port=localhost:8080
+
+# In another terminal, load mock data
+python scripts/load_mock_data.py
+```
+
+This creates:
+- **3 countries**: volcania, coastalia, forestland (each with unique player attribute modifiers)
+- **60 clubs**: 4 clubs per division across tiers 15-19 in each country
+- **~720 players**: 12 players per club with realistic attributes
+
+#### Testing with Real Club IDs
+
+After loading mock data, get real club IDs for testing:
+
+```bash
+# Get clubs in a specific division
+curl "http://localhost:8081/get_league_standings?countryId=volcania&divisionTier=15"
+
+# Use returned club IDs for match simulation
+curl -X POST http://localhost:8080 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "homeClubId": "actual-club-id-from-standings",
+    "awayClubId": "another-actual-club-id"
+  }'
+```
+
+#### Testing All API Endpoints
+
+```bash
+# 1. Get league standings (to find club IDs)
+curl "http://localhost:8081/get_league_standings?countryId=volcania&divisionTier=15"
+
+# 2. Get club details
+curl "http://localhost:8081/get_club?clubId=CLUB_ID_FROM_STANDINGS"
+
+# 3. Simulate match between two clubs
+curl -X POST http://localhost:8080 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "homeClubId": "CLUB_ID_1",
+    "awayClubId": "CLUB_ID_2"
+  }'
+
+# 4. Create new club
+curl -X POST http://localhost:8082/create_club \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Test Club",
+    "countryId": "volcania",
+    "ownerId": "test_user_123"
+  }'
+```
+
+**Note**: Different endpoints run on different ports when testing locally with functions-framework.
+
+#### Alternative: Test Suite Mocks
 The test suite includes comprehensive mocks for Firestore operations, so you can develop and test without a real database connection.
 
 ## Project Structure
