@@ -257,7 +257,7 @@ World Club Championship:
 #### Overview
 
 ```
-Frontend (React.js) → Firebase Hosting → Cloud Functions (Python) → Firestore Database
+Frontend (React.js) → Firebase Hosting → Cloud Run (Flask App) → Firestore Database
                    ↓
             Cloud Storage (Assets) + Cloud Scheduler (Cron Jobs)
 ```
@@ -271,9 +271,9 @@ Frontend:
   - Progressive Web App capabilities
 
 Backend:
-  - Cloud Functions (Python): FREE (2M invocations/month)
-  - Serverless architecture, auto-scaling
-  - Function timeout: 60 seconds, 256MB memory
+  - Cloud Run (Flask App): FREE (2M requests/month, 180,000 vCPU-seconds)
+  - Containerized serverless architecture, auto-scaling
+  - Request timeout: 300 seconds, 512MB memory, 1 vCPU
 
 Database:
   - Firestore: FREE (50K reads, 20K writes daily)
@@ -284,7 +284,7 @@ Storage:
   - Cloud Storage: FREE (5GB for game assets)
   - CDN distribution included
 
-Estimated Cost: $0-$10/month for MVP
+Estimated Cost: $0-$15/month for MVP (slightly higher than Cloud Functions due to container overhead)
 ```
 
 ## Database Schema
