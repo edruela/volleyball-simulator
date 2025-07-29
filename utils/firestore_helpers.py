@@ -241,22 +241,78 @@ class FirestoreHelper:
                 country_ref = self.db.collection("countries").document(country["id"])
                 country_ref.set(country)
 
-            for country in countries:
-                for tier in range(15, 20):  # Amateur divisions only for MVP
-                    for i in range(4):  # 4 clubs per division
+            from utils.constants import COUNTRIES
+
+            for country_id, country_data in COUNTRIES.items():
+                country_doc = {
+                    "id": country_id,
+                    "name": country_data["name"],
+                    "modifiers": country_data["modifiers"],
+                }
+                country_ref = self.db.collection("countries").document(country_id)
+                country_ref.set(country_doc)
+
+            for country_id, country_data in COUNTRIES.items():
+                for tier in range(1, 20):  # All 19 divisions
+                    clubs_per_tier = 16  # Standard 16 clubs per division
+                    for i in range(clubs_per_tier):
                         club_data = {
-                            "name": f"{country['name']} {tier}-{i+1} FC",
-                            "countryId": country["id"],
+                            "name": f"{country_data['name']} {tier}-{i+1} FC",
+                            "countryId": country_id,
                             "divisionTier": tier,
                             "ownerId": None,
                             "isPlayerClub": False,
                         }
 
                         club_id = self.create_club(club_data)
-                        self.generate_initial_squad(club_id, country["id"], tier)
+                        self.generate_initial_squad(club_id, country_id, tier)
 
             print("Sample data created successfully")
 
         except Exception as e:
             print(f"Error creating sample data: {e}")
             raise
+
+    def create_season(self, season) -> bool:
+        """Create a new season in Firestore"""
+        try:
+            season_ref = self.db.collection("seasons").document(season.id)
+            season_ref.set(season.to_dict())
+            return True
+        except Exception as e:
+            print(f"Error creating season: {e}")
+            return False
+
+    def create_competition(self, competition) -> bool:
+        """Create a new competition in Firestore"""
+        try:
+            competition_ref = self.db.collection("competitions").document(
+                competition.id
+            )
+            competition_ref.set(competition.to_dict())
+            return True
+        except Exception as e:
+            print(f"Error creating competition: {e}")
+            return False
+
+    def get_clubs_by_country_and_tier(
+        self, country_id: str, tier: int
+    ) -> List[Dict[str, Any]]:
+        """Get all clubs for a specific country and division tier"""
+        try:
+            clubs_ref = self.db.collection("clubs")
+            query = clubs_ref.where("countryId", "==", country_id).where(
+                "divisionTier", "==", tier
+            )
+            docs = query.stream()
+
+            clubs = []
+            for doc in docs:
+                club_data = doc.to_dict()
+                club_data["id"] = doc.id
+                clubs.append(club_data)
+
+            return clubs
+        except Exception as e:
+            print(f"Error getting clubs by country and tier: {e}")
+            return []
