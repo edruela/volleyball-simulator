@@ -40,6 +40,28 @@ GAME_CONFIG = {
         "PROMOTION_SPOTS": 2,
         "PLAYOFF_SPOTS": 4,
     },
+    "SEASON": {
+        "DEFAULT_DURATION_MINUTES": 1440,  # 24 hours for testing
+        "CLUBS_PER_DIVISION": 16,
+        "TOTAL_DIVISIONS": 19,
+        "CONTINENTAL_COMPETITIONS": {
+            "CHAMPIONS_LEAGUE": {
+                "PARTICIPANTS": 192,  # All Elite League clubs
+                "PRIZE_POOL": 200000000,
+                "WINNER_PRIZE": 50000000,
+            },
+            "PROFESSIONAL_CUP": {
+                "PARTICIPANTS": 192,  # Professional Division 1 clubs
+                "PRIZE_POOL": 75000000,
+                "WINNER_PRIZE": 20000000,
+            },
+            "AMATEUR_CHAMPIONSHIP": {
+                "PARTICIPANTS": 12,  # Semi-Pro Division 1 champions
+                "PRIZE_POOL": 10000000,
+                "WINNER_PRIZE": 3000000,
+            },
+        },
+    },
 }
 
 COUNTRIES = {
@@ -60,6 +82,49 @@ COUNTRIES = {
             "settingPrecision": 5,
             "courtVision": 5,
         },
+    },
+    "desertia": {
+        "name": "Desertia",
+        "modifiers": {"stamina": 15, "mentalToughness": 5, "speed": -10},
+    },
+    "northlands": {
+        "name": "Northlands",
+        "modifiers": {"spikePower": 15, "strength": 10, "agility": -10},
+    },
+    "islandia": {
+        "name": "Islandia",
+        "modifiers": {"speed": 15, "courtVision": 10, "strength": -5},
+    },
+    "plainscountry": {
+        "name": "Plainscountry",
+        "modifiers": {"passingAccuracy": 10, "decisionMaking": 5},
+    },
+    "stonehills": {
+        "name": "Stonehills",
+        "modifiers": {"injuryResistance": 10, "mentalToughness": 10},
+    },
+    "riverside": {
+        "name": "Riverside",
+        "modifiers": {
+            "adaptability": 10,
+            "stamina": 5,
+            "strength": 5,
+            "agility": 5,
+            "jumpHeight": 5,
+            "speed": 5,
+        },
+    },
+    "windlands": {
+        "name": "Windlands",
+        "modifiers": {"ballControl": 15, "serveAccuracy": 10},
+    },
+    "sunlands": {
+        "name": "Sunlands",
+        "modifiers": {"stamina": 10, "jumpHeight": 10, "nightPerformance": -5},
+    },
+    "mistcountry": {
+        "name": "Mistcountry",
+        "modifiers": {"courtVision": 15, "communication": 10, "reactionTime": -5},
     },
 }
 
