@@ -189,22 +189,45 @@ print(f"Final Score: {result['home_sets']} - {result['away_sets']}")
 print(f"Winner: {result['winner']}")
 ```
 
-### Testing Cloud Functions Locally
+### Testing Flask Application Locally
 
 ```bash
-# Install Functions Framework
-pip install functions-framework
+# Run Flask development server
+python app.py
 
-# Run simulate_match function locally
-functions-framework --target=simulate_match --source=main.py --port=8080
+# Or use Flask CLI
+export FLASK_APP=app.py
+export FLASK_ENV=development
+flask run --host=0.0.0.0 --port=8080
 
 # Test with curl
-curl -X POST http://localhost:8080 \
+curl -X POST http://localhost:8080/simulate-match \
   -H "Content-Type: application/json" \
   -d '{
     "homeClubId": "test_home",
     "awayClubId": "test_away"
   }'
+```
+
+### Testing with Docker Locally
+
+```bash
+# Build Docker image
+docker build -t volleyball-simulator .
+
+# Run container locally
+docker run -p 8080:8080 volleyball-simulator
+
+# Test the containerized app
+curl -X POST http://localhost:8080/simulate-match \
+  -H "Content-Type: application/json" \
+  -d '{
+    "homeClubId": "test_home",
+    "awayClubId": "test_away"
+  }'
+
+# Run with environment variables
+docker run -p 8080:8080 -e PORT=8080 volleyball-simulator
 ```
 
 ## Database Setup (Optional)
@@ -248,10 +271,10 @@ After loading mock data, get real club IDs for testing:
 
 ```bash
 # Get clubs in a specific division
-curl "http://localhost:8081/get_league_standings?countryId=volcania&divisionTier=15"
+curl "http://localhost:8080/league-standings?countryId=volcania&divisionTier=15"
 
 # Use returned club IDs for match simulation
-curl -X POST http://localhost:8080 \
+curl -X POST http://localhost:8080/simulate-match \
   -H "Content-Type: application/json" \
   -d '{
     "homeClubId": "actual-club-id-from-standings",
@@ -263,13 +286,13 @@ curl -X POST http://localhost:8080 \
 
 ```bash
 # 1. Get league standings (to find club IDs)
-curl "http://localhost:8081/get_league_standings?countryId=volcania&divisionTier=15"
+curl "http://localhost:8080/league-standings?countryId=volcania&divisionTier=15"
 
 # 2. Get club details
-curl "http://localhost:8081/get_club?clubId=CLUB_ID_FROM_STANDINGS"
+curl "http://localhost:8080/club?clubId=CLUB_ID_FROM_STANDINGS"
 
 # 3. Simulate match between two clubs
-curl -X POST http://localhost:8080 \
+curl -X POST http://localhost:8080/simulate-match \
   -H "Content-Type: application/json" \
   -d '{
     "homeClubId": "CLUB_ID_1",
@@ -277,16 +300,19 @@ curl -X POST http://localhost:8080 \
   }'
 
 # 4. Create new club
-curl -X POST http://localhost:8082/create_club \
+curl -X POST http://localhost:8080/create-club \
   -H "Content-Type: application/json" \
   -d '{
     "name": "My Test Club",
     "countryId": "volcania",
     "ownerId": "test_user_123"
   }'
+
+# 5. Health check
+curl "http://localhost:8080/health"
 ```
 
-**Note**: Different endpoints run on different ports when testing locally with functions-framework.
+**Note**: All endpoints now run on the same port (8080) with the Flask application.
 
 #### Alternative: Test Suite Mocks
 The test suite includes comprehensive mocks for Firestore operations, so you can develop and test without a real database connection.
@@ -300,7 +326,8 @@ volleyball-simulator/
 ├── models/               # Data models (Club, Player)
 ├── utils/                # Helper functions and constants
 ├── tests/                # Test suite
-├── main.py              # Cloud Functions entry points
+├── main.py              # Legacy Cloud Functions (deprecated)
+├── app.py                # Flask application entry point
 ├── requirements.txt     # Python dependencies
 └── LOCAL_DEVELOPMENT.md # This file
 ```
@@ -450,6 +477,6 @@ print(f'Average: {(end-start)/100*1000:.1f}ms per match')
 ## Additional Resources
 
 - [Volleyball Rules](https://www.fivb.org/en/volleyball/thegame_volleyball_glossary/officialrulesofthegames) - For understanding game mechanics
-- [Google Cloud Functions](https://cloud.google.com/functions/docs) - For deployment
+- [Google Cloud Run](https://cloud.google.com/run/docs) - For deployment
 - [Firestore Documentation](https://cloud.google.com/firestore/docs) - For database operations
 - [pytest Documentation](https://docs.pytest.org/) - For testing

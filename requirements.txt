@@ -1,6 +1,7 @@
 # Core dependencies
 google-cloud-firestore>=2.13.1
-functions-framework>=3.5.0
+Flask>=2.3.0
+gunicorn>=21.2.0
 numpy>=1.26.0
 python-dateutil>=2.8.2
 
