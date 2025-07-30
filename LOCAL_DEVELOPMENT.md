@@ -326,8 +326,8 @@ volleyball-simulator/
 ├── models/               # Data models (Club, Player)
 ├── utils/                # Helper functions and constants
 ├── tests/                # Test suite
-├── main.py              # Legacy Cloud Functions (deprecated)
-├── app.py                # Flask application entry point
+├── main.py              # Legacy Cloud Functions wrappers (deprecated - not used)
+├── app.py                # Flask application entry point (current)
 ├── requirements.txt     # Python dependencies
 └── LOCAL_DEVELOPMENT.md # This file
 ```

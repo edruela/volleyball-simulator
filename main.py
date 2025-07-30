@@ -1,5 +1,7 @@
 """
-Cloud Functions entry points for Volleyball Manager
+Legacy Cloud Functions entry points for Volleyball Manager (deprecated)
+This file contains compatibility wrappers for the original Cloud Functions deployment.
+The current deployment uses app.py with Flask on Cloud Run.
 """
 
 from typing import Dict, Any, Union, Tuple, Optional
@@ -389,11 +391,10 @@ class StartSeason(Resource):
             return jsonify({"error": f"Failed to start season: {str(e)}"}), 500
 
 
-# Cloud Functions compatibility wrappers
 def simulate_match(
     request: Request,
 ) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
-    """Cloud Function wrapper for simulate_match"""
+    """Legacy Cloud Function wrapper for simulate_match (deprecated)"""
     with app.test_request_context(json=request.get_json(silent=True)):
         return SimulateMatch().post()
 
@@ -401,7 +402,7 @@ def simulate_match(
 def get_club(
     request: Request,
 ) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
-    """Cloud Function wrapper for get_club"""
+    """Legacy Cloud Function wrapper for get_club (deprecated)"""
     with app.test_request_context(query_string=request.query_string):
         return GetClub().get()
 
@@ -409,7 +410,7 @@ def get_club(
 def create_club(
     request: Request,
 ) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
-    """Cloud Function wrapper for create_club"""
+    """Legacy Cloud Function wrapper for create_club (deprecated)"""
     with app.test_request_context(json=request.get_json(silent=True)):
         return CreateClub().post()
 
@@ -417,7 +418,7 @@ def create_club(
 def get_league_standings(
     request: Request,
 ) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
-    """Cloud Function wrapper for get_league_standings"""
+    """Legacy Cloud Function wrapper for get_league_standings (deprecated)"""
     with app.test_request_context(query_string=request.query_string):
         return GetLeagueStandings().get()
 
@@ -425,7 +426,7 @@ def get_league_standings(
 def start_season(
     request: Request,
 ) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
-    """Cloud Function wrapper for start_season"""
+    """Legacy Cloud Function wrapper for start_season (deprecated)"""
     with app.test_request_context(json=request.get_json(silent=True)):
         return StartSeason().post()
 
