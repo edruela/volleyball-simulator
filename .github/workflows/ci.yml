@@ -92,4 +92,4 @@ jobs:
           --max-instances 10 \
           --timeout 300 \
           --port 8080 \
-          --set-env-vars FIREBASE_ADMIN_KEY="${{ secrets.FIREBASE_ADMIN_KEY }}"
+          --set-env-vars FIREBASE_ADMIN_KEY=$(echo "${{ secrets.FIREBASE_ADMIN_KEY }}" | base64)
