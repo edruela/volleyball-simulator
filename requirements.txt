@@ -16,3 +16,7 @@ mypy>=1.7.0
 
 # Testing utilities
 faker>=20.1.0
+
+# Firebase Authentication
+firebase-admin>=6.5.0
+flask-cors>=4.0.0

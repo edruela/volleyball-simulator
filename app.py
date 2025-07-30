@@ -5,11 +5,14 @@ Converted from Cloud Functions to Cloud Run deployment
 
 from flask import Flask, request, jsonify
 from flask_restx import Api, Resource, fields  # type: ignore
+from flask_cors import CORS
 from google.cloud import firestore  # type: ignore
 from game_engine.match_simulation import VolleyballSimulator
 from utils.firestore_helpers import FirestoreHelper
+from utils.auth import require_auth
 
 app = Flask(__name__)
+CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"])
 api = Api(
     app,
     version="1.0",
@@ -61,8 +64,10 @@ class MatchSimulation(Resource):
     @match_ns.expect(match_request)
     @match_ns.response(200, "Match simulated successfully")
     @match_ns.response(400, "Invalid request")
+    @match_ns.response(401, "Authentication required")
     @match_ns.response(404, "Club not found")
     @match_ns.response(500, "Internal server error")
+    @require_auth
     def post(self):
         """Simulate a volleyball match"""
         try:
@@ -132,7 +137,9 @@ class ClubOperations(Resource):
     @club_ns.param("clubId", "The club identifier")
     @club_ns.response(200, "Success")
     @club_ns.response(400, "Invalid request")
+    @club_ns.response(401, "Authentication required")
     @club_ns.response(404, "Club not found")
+    @require_auth
     def get(self):
         """Get club information"""
         try:
@@ -155,7 +162,9 @@ class ClubOperations(Resource):
     @club_ns.expect(club_request)
     @club_ns.response(200, "Club created successfully")
     @club_ns.response(400, "Invalid request")
+    @club_ns.response(401, "Authentication required")
     @club_ns.response(500, "Internal server error")
+    @require_auth
     def post(self):
         """Create a new club"""
         try:
@@ -195,7 +204,9 @@ class LeagueStandings(Resource):
     @league_ns.param("divisionTier", "The division tier", type=int)
     @league_ns.response(200, "Success")
     @league_ns.response(400, "Invalid request")
+    @league_ns.response(401, "Authentication required")
     @league_ns.response(500, "Internal server error")
+    @require_auth
     def get(self):
         """Get league standings"""
         try:

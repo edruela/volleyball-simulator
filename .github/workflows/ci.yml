@@ -91,4 +91,5 @@ jobs:
           --cpu 1 \
           --max-instances 10 \
           --timeout 300 \
-          --port 8080
+          --port 8080 \
+          --set-env-vars FIREBASE_ADMIN_KEY="${{ secrets.FIREBASE_ADMIN_KEY }}"
