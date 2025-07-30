@@ -156,9 +156,7 @@ class TestLeagueEndpoints:
 
         mock_firestore_helper.get_league_standings.return_value = mock_standings
 
-        response = client.get(
-            "/leagues/standings?countryId=volcania&divisionTier=1"
-        )
+        response = client.get("/leagues/standings?countryId=volcania&divisionTier=1")
 
         assert response.status_code == 200
         data = json.loads(response.data)

@@ -55,10 +55,7 @@ if __name__ == "__main__":
     print()
 
     if auth_bypass_ok and health_ok and clubs_ok:
-        print(
-            "✅ All tests passed! Auth bypass and JSON serialization "
-            "are working."
-        )
+        print("✅ All tests passed! Auth bypass and JSON serialization " "are working.")
         sys.exit(0)
     else:
         print("❌ Some tests failed.")

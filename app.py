@@ -101,9 +101,7 @@ class MatchSimulation(Resource):
 
             if not firestore_helper or not volleyball_sim:
                 return {
-                    "error": (
-                        "Service unavailable - running in local testing mode"
-                    )
+                    "error": ("Service unavailable - running in local testing mode")
                 }, 503
 
             home_club_data = firestore_helper.get_club(home_club_id)
@@ -243,20 +241,14 @@ class LeagueStandings(Resource):
             division_tier = request.args.get("divisionTier", type=int)
 
             if not country_id or division_tier is None:
-                return {
-                    "error": "Missing countryId or divisionTier parameters"
-                }, 400
+                return {"error": "Missing countryId or divisionTier parameters"}, 400
 
             if not firestore_helper:
                 return {
-                    "error": (
-                        "Service unavailable - running in local testing mode"
-                    )
+                    "error": ("Service unavailable - running in local testing mode")
                 }, 503
 
-            standings = firestore_helper.get_league_standings(
-                country_id, division_tier
-            )
+            standings = firestore_helper.get_league_standings(country_id, division_tier)
 
             return jsonify(
                 {
