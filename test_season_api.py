@@ -4,8 +4,6 @@ Test script for the Season Management API
 """
 
 from utils.constants import COUNTRIES
-from game_engine.season_management import SeasonManager
-from utils.firestore_helpers import FirestoreHelper
 
 
 def test_imports():

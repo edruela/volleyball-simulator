@@ -124,7 +124,11 @@ COUNTRIES = {
     },
     "mistcountry": {
         "name": "Mistcountry",
-        "modifiers": {"courtVision": 15, "communication": 10, "reactionTime": -5},
+        "modifiers": {
+            "courtVision": 15,
+            "communication": 10,
+            "reactionTime": -5,
+        },
     },
 }
 
@@ -147,7 +151,11 @@ POSITIONS = {
     "S": {
         "name": "Setter",
         "description": "Playmaker, ball distribution specialist",
-        "key_attributes": ["settingPrecision", "courtVision", "decisionMaking"],
+        "key_attributes": [
+            "settingPrecision",
+            "courtVision",
+            "decisionMaking",
+        ],
     },
     "L": {
         "name": "Libero",

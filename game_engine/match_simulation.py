@@ -3,8 +3,7 @@ Advanced volleyball match simulation engine
 """
 
 import random
-import numpy as np
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
@@ -261,7 +260,10 @@ class VolleyballSimulator:
         )
 
     def _simulate_serve(
-        self, serving_strength: Dict, receiving_strength: Dict, serving_team: str
+        self,
+        serving_strength: Dict,
+        receiving_strength: Dict,
+        serving_team: str,
     ) -> Dict:
         """Simulate service phase"""
         serve_power = serving_strength["serve"]

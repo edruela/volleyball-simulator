@@ -5,11 +5,11 @@ Script to load mock data into Firestore for local testing
 
 import os
 import sys
-from google.cloud import firestore
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from google.cloud import firestore  # type: ignore
 
 from utils.firestore_helpers import FirestoreHelper
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def main():
@@ -49,7 +49,9 @@ def main():
             f"{clubs_per_division[d]} clubs in division {d}" for d in sorted(divisions)
         )
         print(
-            f"- {total_clubs} clubs ({clubs_per_division_str}, divisions {divisions_str}, across {len(country_names)} countries)"
+            f"- {total_clubs} clubs ({clubs_per_division_str}, "
+            f"divisions {divisions_str}, across {len(country_names)} "
+            f"countries)"
         )
 
         # Dynamically calculate player info if possible
@@ -59,7 +61,10 @@ def main():
         players_per_club = (
             round(len(sample_players) / total_clubs) if total_clubs > 0 else 0
         )
-        print(f"- ~{len(sample_players)} players ({players_per_club} players per club)")
+        print(
+            f"- ~{len(sample_players)} players "
+            f"({players_per_club} players per club)"
+        )
 
         helper.create_sample_data()
 

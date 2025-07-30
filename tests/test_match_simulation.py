@@ -2,9 +2,8 @@
 Tests for match simulation engine
 """
 
-import pytest
 from game_engine.match_simulation import VolleyballSimulator, MatchEvent
-from models.club import Club, ClubFacilities, ClubFinances
+from models.club import Club
 from models.player import (
     Player,
     PlayerAttributes,

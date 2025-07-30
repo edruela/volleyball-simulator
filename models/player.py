@@ -2,7 +2,7 @@
 Player data model and operations
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import random
@@ -167,7 +167,7 @@ class Player:
         elif self.age < 25:
             growth_rate = training_level * 0.5
             for attr_name in vars(self.attributes):
-                if random.random() < 0.3:  # 30% chance to improve each attribute
+                if random.random() < 0.3:  # 30% chance to improve
                     current_value = getattr(self.attributes, attr_name)
                     improvement = random.uniform(0, growth_rate)
                     new_value = min(100, current_value + improvement)
@@ -264,7 +264,7 @@ def generate_random_player(
     last_name = random.choice(last_names)
     age = random.randint(18, 35)
 
-    base_skill = max(30, 80 - (division_tier * 3))  # Higher tier = better players
+    base_skill = max(30, 80 - (division_tier * 3))  # Higher tier better
     skill_variance = 15
 
     attributes = PlayerAttributes()

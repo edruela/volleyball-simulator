@@ -2,8 +2,7 @@
 Tests for data models
 """
 
-import pytest
-from models.club import Club, ClubFinances, ClubFacilities, ClubStats, ClubTactics
+from models.club import Club, ClubFinances
 from models.player import (
     Player,
     PlayerAttributes,
@@ -317,7 +316,10 @@ class TestPlayerGeneration:
     def test_generate_random_player(self):
         """Test random player generation"""
         player = generate_random_player(
-            club_id="test_club", country_id="testland", position="OH", division_tier=10
+            club_id="test_club",
+            country_id="testland",
+            position="OH",
+            division_tier=10,
         )
 
         assert player.club_id == "test_club"

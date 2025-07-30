@@ -2,7 +2,7 @@
 Club data model and operations
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
 

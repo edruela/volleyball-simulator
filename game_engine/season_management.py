@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Any, cast
 from dataclasses import dataclass
 
@@ -45,7 +45,8 @@ class SeasonManager:
         Args:
             season_name: Name of the season
             duration_minutes: Duration of the season in minutes
-            participating_countries: List of country IDs to include (defaults to all)
+            participating_countries: List of country IDs to include
+                (defaults to all)
 
         Returns:
             SeasonCreationResult with creation details
@@ -104,7 +105,8 @@ class SeasonManager:
                 competitions_created=competitions_created,
                 participating_countries=participating_countries,
                 success=True,
-                message=f"Season '{season_name}' created successfully with {competitions_created} competitions",
+                message=f"Season '{season_name}' created successfully with "
+                f"{competitions_created} competitions",
             )
 
         except Exception as e:
@@ -156,7 +158,8 @@ class SeasonManager:
                 country_id=country_id,
                 division_tier=tier,
                 format=CompetitionFormatDetails(
-                    type=CompetitionFormat.LEAGUE, teams_count=len(participants)
+                    type=CompetitionFormat.LEAGUE,
+                    teams_count=len(participants),
                 ),
                 participants=participants,
                 prizes=prizes,
