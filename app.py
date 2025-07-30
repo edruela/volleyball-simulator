@@ -3,6 +3,7 @@ Flask application for Volleyball Manager
 Converted from Cloud Functions to Cloud Run deployment
 """
 
+import os
 from flask import Flask, request, jsonify
 from flask_restx import Api, Resource, fields  # type: ignore
 from flask_cors import CORS
@@ -54,9 +55,26 @@ club_request = api.model(
 )
 
 # Initialize other components
-db = firestore.Client()
-firestore_helper = FirestoreHelper(db)
-volleyball_sim = VolleyballSimulator()
+db = None
+firestore_helper = None
+volleyball_sim = None
+
+try:
+    db = firestore.Client()
+    firestore_helper = FirestoreHelper(db)
+    volleyball_sim = VolleyballSimulator()
+except Exception as e:
+    print(
+        f"Warning: Firestore initialization failed (likely missing "
+        f"credentials): {e}"
+    )
+    print(
+        "Running in local testing mode - Swagger UI will be available "
+        "but API endpoints may not work"
+    )
+    db = None
+    firestore_helper = None
+    volleyball_sim = None
 
 
 @match_ns.route("/simulate")
@@ -73,19 +91,24 @@ class MatchSimulation(Resource):
         try:
             request_json = request.get_json(silent=True)
             if not request_json:
-                return jsonify({"error": "No JSON data provided"}), 400
+                return {"error": "No JSON data provided"}, 400
 
             home_club_id = request_json.get("homeClubId")
             away_club_id = request_json.get("awayClubId")
 
             if not home_club_id or not away_club_id:
-                return jsonify({"error": "Missing club IDs"}), 400
+                return {"error": "Missing club IDs"}, 400
+
+            if not firestore_helper or not volleyball_sim:
+                return {
+                    "error": ("Service unavailable - running in local testing mode")
+                }, 503
 
             home_club_data = firestore_helper.get_club(home_club_id)
             away_club_data = firestore_helper.get_club(away_club_id)
 
             if not home_club_data or not away_club_data:
-                return jsonify({"error": "Club not found"}), 404
+                return {"error": "Club not found"}, 404
 
             home_players = firestore_helper.get_club_players(home_club_id)
             away_players = firestore_helper.get_club_players(away_club_id)
@@ -126,10 +149,7 @@ class MatchSimulation(Resource):
             return jsonify(match_result)
 
         except Exception as e:
-            return (
-                jsonify({"error": f"Match simulation failed: {str(e)}"}),
-                500,
-            )
+            return {"error": f"Match simulation failed: {str(e)}"}, 500
 
 
 @club_ns.route("")
@@ -145,11 +165,16 @@ class ClubOperations(Resource):
         try:
             club_id = request.args.get("clubId")
             if not club_id:
-                return jsonify({"error": "Missing clubId parameter"}), 400
+                return {"error": "Missing clubId parameter"}, 400
+
+            if not firestore_helper:
+                return {
+                    "error": ("Service unavailable - running in local testing mode")
+                }, 503
 
             club_data = firestore_helper.get_club(club_id)
             if not club_data:
-                return jsonify({"error": "Club not found"}), 404
+                return {"error": "Club not found"}, 404
 
             players = firestore_helper.get_club_players(club_id)
             club_data["players"] = players
@@ -157,7 +182,7 @@ class ClubOperations(Resource):
             return jsonify(club_data)
 
         except Exception as e:
-            return jsonify({"error": f"Failed to get club: {str(e)}"}), 500
+            return {"error": f"Failed to get club: {str(e)}"}, 500
 
     @club_ns.expect(club_request)
     @club_ns.response(200, "Club created successfully")
@@ -170,15 +195,17 @@ class ClubOperations(Resource):
         try:
             request_json = request.get_json(silent=True)
             if not request_json:
-                return jsonify({"error": "No JSON data provided"}), 400
+                return {"error": "No JSON data provided"}, 400
 
             required_fields = ["name", "countryId", "ownerId"]
             for field in required_fields:
                 if field not in request_json:
-                    return (
-                        jsonify({"error": f"Missing required field: {field}"}),
-                        400,
-                    )
+                    return {"error": f"Missing required field: {field}"}, 400
+
+            if not firestore_helper:
+                return {
+                    "error": ("Service unavailable - running in local testing mode")
+                }, 503
 
             club_id = firestore_helper.create_club(request_json)
 
@@ -195,7 +222,7 @@ class ClubOperations(Resource):
             )
 
         except Exception as e:
-            return jsonify({"error": f"Failed to create club: {str(e)}"}), 500
+            return {"error": f"Failed to create club: {str(e)}"}, 500
 
 
 @league_ns.route("/standings")
@@ -214,12 +241,12 @@ class LeagueStandings(Resource):
             division_tier = request.args.get("divisionTier", type=int)
 
             if not country_id or division_tier is None:
-                return (
-                    jsonify(
-                        {"error": "Missing countryId or divisionTier " "parameters"}
-                    ),
-                    400,
-                )
+                return {"error": "Missing countryId or divisionTier parameters"}, 400
+
+            if not firestore_helper:
+                return {
+                    "error": ("Service unavailable - running in local testing mode")
+                }, 503
 
             standings = firestore_helper.get_league_standings(country_id, division_tier)
 
@@ -232,10 +259,7 @@ class LeagueStandings(Resource):
             )
 
         except Exception as e:
-            return (
-                jsonify({"error": f"Failed to get standings: {str(e)}"}),
-                500,
-            )
+            return {"error": f"Failed to get standings: {str(e)}"}, 500
 
 
 @api.route("/health")
