@@ -5,7 +5,7 @@ Firestore database helper functions
 from typing import Dict, List, Optional, Any
 from google.cloud import firestore  # type: ignore
 from models.club import Club
-from models.player import generate_random_player
+from models.player import generate_random_player, Player
 import random
 import uuid
 
@@ -210,6 +210,75 @@ class FirestoreHelper:
             return standings
         except Exception as e:
             print(f"Error getting league standings: {e}")
+            return []
+
+    def get_player(self, player_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single player by ID"""
+        try:
+            player_ref = self.db.collection("players").document(player_id)
+            player_doc = player_ref.get()
+            
+            if player_doc.exists:
+                player_data = player_doc.to_dict()
+                player_data["id"] = player_doc.id
+                return player_data
+            return None
+        except Exception as e:
+            print(f"Error getting player: {e}")
+            return None
+
+    def update_player(self, player_id: str, player_data: Dict[str, Any]) -> bool:
+        """Update a player's data"""
+        try:
+            player_ref = self.db.collection("players").document(player_id)
+            player_ref.update(player_data)
+            return True
+        except Exception as e:
+            print(f"Error updating player: {e}")
+            return False
+
+    def save_player(self, player: Player) -> str:
+        """Save a new player to Firestore"""
+        try:
+            player_data = player.to_dict()
+            player_ref = self.db.collection("players").document()
+            player_ref.set(player_data)
+            return player_ref.id
+        except Exception as e:
+            print(f"Error saving player: {e}")
+            raise
+
+    def get_players_by_division_and_position(
+        self, division_tier: int, position: str, country_id: str
+    ) -> List[Dict[str, Any]]:
+        """Get players by division tier and position for salary comparison"""
+        try:
+            players = []
+            
+            tiers_to_check = [division_tier]
+            if division_tier > 1:
+                tiers_to_check.append(division_tier - 1)
+            if division_tier > 2:
+                tiers_to_check.append(division_tier - 2)
+            
+            for tier in tiers_to_check:
+                clubs_ref = self.db.collection("clubs").where("divisionTier", "==", tier).where("countryId", "==", country_id)
+                clubs = clubs_ref.stream()
+                
+                club_ids = [club.id for club in clubs]
+                
+                for club_id in club_ids:
+                    players_ref = self.db.collection("players").where("clubId", "==", club_id).where("position", "==", position)
+                    club_players = players_ref.stream()
+                    
+                    for player_doc in club_players:
+                        player_data = player_doc.to_dict()
+                        player_data["id"] = player_doc.id
+                        players.append(player_data)
+            
+            return players
+        except Exception as e:
+            print(f"Error getting players by division and position: {e}")
             return []
 
     def create_sample_data(self):
