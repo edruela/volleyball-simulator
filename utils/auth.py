@@ -17,10 +17,10 @@ def initialize_firebase():
         firebase_key = os.getenv("FIREBASE_ADMIN_KEY")
         if not firebase_key:
             raise ValueError("FIREBASE_ADMIN_KEY environment variable not set")
-            
+
         try:
             # Decode base64 string to JSON
-            decoded_key = base64.b64decode(firebase_key).decode('utf-8')
+            decoded_key = base64.b64decode(firebase_key).decode("utf-8")
             cred_dict = json.loads(decoded_key)
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
@@ -37,6 +37,7 @@ def require_auth(f):
     Expects Authorization header with format: Bearer <firebase_id_token>
     Adds user_id, user_email and user_roles to request context if token is valid
     """
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not firebase_admin._apps:
