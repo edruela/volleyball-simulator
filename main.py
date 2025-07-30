@@ -10,6 +10,7 @@ from google.cloud import firestore  # type: ignore
 from game_engine.match_simulation import VolleyballSimulator
 from game_engine.season_management import SeasonManager
 from utils.firestore_helpers import FirestoreHelper
+from utils.auth import require_auth
 
 db = None
 firestore_helper: Optional[FirestoreHelper] = None
@@ -85,6 +86,7 @@ class SimulateMatch(Resource):
         "simulate_match",
         description="Simulate a volleyball match between two clubs",
     )
+    @require_auth
     def post(self):
         """
         Simulate a volleyball match between two clubs
@@ -157,6 +159,7 @@ class SimulateMatch(Resource):
 class GetClub(Resource):
     @api.doc("get_club", description="Get club information by ID")
     @api.param("clubId", "Club ID", required=True)
+    @require_auth
     def get(self):
         """
         Get club information by ID
@@ -190,6 +193,7 @@ class GetClub(Resource):
 class CreateClub(Resource):
     @api.expect(club_request_model)
     @api.doc("create_club", description="Create a new club")
+    @require_auth
     def post(self):
         """
         Create a new club
@@ -233,6 +237,7 @@ class GetLeagueStandings(Resource):
     )
     @api.param("countryId", "Country ID", required=True)
     @api.param("divisionTier", "Division tier number", type=int, required=True)
+    @require_auth
     def get(self):
         """
         Get league standings for a specific country and division
@@ -270,6 +275,7 @@ class StartSeason(Resource):
         "start_season",
         description="Start a new season with competitions for all countries",
     )
+    @require_auth
     def post(self):
         """
         Start a new season with competitions for all countries
