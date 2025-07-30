@@ -2,8 +2,7 @@
 Tests for Firestore helper functions
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from utils.firestore_helpers import FirestoreHelper
 
 

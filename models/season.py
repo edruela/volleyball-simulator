@@ -36,8 +36,8 @@ class Season:
             "startDate": self.start_date.isoformat(),
             "status": self.status.value,
             "participatingCountries": self.participating_countries,
-            "createdAt": self.created_at.isoformat() if self.created_at else None,
-            "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
+            "createdAt": (self.created_at.isoformat() if self.created_at else None),
+            "updatedAt": (self.updated_at.isoformat() if self.updated_at else None),
         }
 
     @classmethod

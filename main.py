@@ -5,8 +5,8 @@ Cloud Functions entry points for Volleyball Manager
 from typing import Dict, Any, Union, Tuple, Optional
 import os
 from flask import Flask, Request
-from flask_restx import Api, Resource, fields
-from google.cloud import firestore
+from flask_restx import Api, Resource, fields  # type: ignore
+from google.cloud import firestore  # type: ignore
 from game_engine.match_simulation import VolleyballSimulator
 from game_engine.season_management import SeasonManager
 from utils.firestore_helpers import FirestoreHelper
@@ -24,9 +24,13 @@ try:
     volleyball_sim = VolleyballSimulator()
     season_manager = SeasonManager(firestore_helper)
 except Exception as e:
-    print(f"Warning: Firestore initialization failed (likely missing credentials): {e}")
     print(
-        "Running in local testing mode - Swagger UI will be available but API endpoints may not work"
+        f"Warning: Firestore initialization failed (likely missing "
+        f"credentials): {e}"
+    )
+    print(
+        "Running in local testing mode - Swagger UI will be available "
+        "but API endpoints may not work"
     )
     db = None
     firestore_helper = None
@@ -38,7 +42,7 @@ api = Api(
     app,
     version="1.0",
     title="Volleyball Manager API",
-    description="API for managing volleyball clubs, players, matches, and seasons",
+    description=("API for managing volleyball clubs, players, matches, and seasons"),
     doc="/swagger/",
 )
 
@@ -78,7 +82,8 @@ season_request_model = api.model(
 class SimulateMatch(Resource):
     @api.expect(match_request_model)
     @api.doc(
-        "simulate_match", description="Simulate a volleyball match between two clubs"
+        "simulate_match",
+        description="Simulate a volleyball match between two clubs",
     )
     def post(self):
         """
@@ -97,7 +102,7 @@ class SimulateMatch(Resource):
 
             if not firestore_helper or not volleyball_sim:
                 return {
-                    "error": "Service unavailable - running in local testing mode"
+                    "error": ("Service unavailable - running in local testing mode")
                 }, 503
 
             home_club_data = firestore_helper.get_club(home_club_id)
@@ -124,8 +129,16 @@ class SimulateMatch(Resource):
             tactics = request_json.get(
                 "tactics",
                 {
-                    "home": {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
-                    "away": {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
+                    "home": {
+                        "formation": "5-1",
+                        "intensity": 1.0,
+                        "style": "balanced",
+                    },
+                    "away": {
+                        "formation": "5-1",
+                        "intensity": 1.0,
+                        "style": "balanced",
+                    },
                 },
             )
 
@@ -157,7 +170,7 @@ class GetClub(Resource):
 
             if not firestore_helper:
                 return {
-                    "error": "Service unavailable - running in local testing mode"
+                    "error": ("Service unavailable - running in local testing mode")
                 }, 503
 
             club_data = firestore_helper.get_club(club_id)
@@ -193,7 +206,7 @@ class CreateClub(Resource):
 
             if not firestore_helper:
                 return {
-                    "error": "Service unavailable - running in local testing mode"
+                    "error": ("Service unavailable - running in local testing mode")
                 }, 503
 
             club_id = firestore_helper.create_club(request_json)
@@ -235,7 +248,7 @@ class GetLeagueStandings(Resource):
 
             if not firestore_helper:
                 return {
-                    "error": "Service unavailable - running in local testing mode"
+                    "error": ("Service unavailable - running in local testing mode")
                 }, 503
 
             standings = firestore_helper.get_league_standings(country_id, division_tier)
@@ -293,7 +306,7 @@ class StartSeason(Resource):
 
             if not season_manager:
                 return {
-                    "error": "Service unavailable - running in local testing mode"
+                    "error": ("Service unavailable - running in local testing mode")
                 }, 503
 
             result = season_manager.create_season(
@@ -326,13 +339,17 @@ def simulate_match(
         return SimulateMatch().post()
 
 
-def get_club(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
+def get_club(
+    request: Request,
+) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
     """Cloud Function wrapper for get_club"""
     with app.test_request_context(query_string=request.query_string):
         return GetClub().get()
 
 
-def create_club(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
+def create_club(
+    request: Request,
+) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
     """Cloud Function wrapper for create_club"""
     with app.test_request_context(json=request.get_json(silent=True)):
         return CreateClub().post()
@@ -346,7 +363,9 @@ def get_league_standings(
         return GetLeagueStandings().get()
 
 
-def start_season(request: Request) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
+def start_season(
+    request: Request,
+) -> Union[Dict[str, Any], Tuple[Dict[str, str], int]]:
     """Cloud Function wrapper for start_season"""
     with app.test_request_context(json=request.get_json(silent=True)):
         return StartSeason().post()

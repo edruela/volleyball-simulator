@@ -3,9 +3,9 @@ Firestore database helper functions
 """
 
 from typing import Dict, List, Optional, Any
-from google.cloud import firestore
+from google.cloud import firestore  # type: ignore
 from models.club import Club
-from models.player import Player, generate_random_player
+from models.player import generate_random_player
 import random
 import uuid
 
@@ -219,12 +219,20 @@ class FirestoreHelper:
                 {
                     "id": "volcania",
                     "name": "Volcania",
-                    "modifiers": {"blockTiming": 15, "strength": 10, "agility": -5},
+                    "modifiers": {
+                        "blockTiming": 15,
+                        "strength": 10,
+                        "agility": -5,
+                    },
                 },
                 {
                     "id": "coastalia",
                     "name": "Coastalia",
-                    "modifiers": {"agility": 10, "serveAccuracy": 10, "strength": -5},
+                    "modifiers": {
+                        "agility": 10,
+                        "serveAccuracy": 10,
+                        "strength": -5,
+                    },
                 },
                 {
                     "id": "forestland",

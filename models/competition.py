@@ -204,8 +204,8 @@ class Competition:
             "status": self.status.value,
             "currentRound": self.current_round,
             "results": self.results.to_dict() if self.results else None,
-            "createdAt": self.created_at.isoformat() if self.created_at else None,
-            "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
+            "createdAt": (self.created_at.isoformat() if self.created_at else None),
+            "updatedAt": (self.updated_at.isoformat() if self.updated_at else None),
         }
 
     @classmethod
