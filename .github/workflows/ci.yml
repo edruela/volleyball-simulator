@@ -81,6 +81,8 @@ jobs:
         docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/volleyball-simulator/volleyball-simulator:latest
     
     - name: Deploy to Cloud Run
+      env:
+        FIREBASE_KEY: ${{ secrets.FIREBASE_ADMIN_KEY }}
       run: |
         gcloud run deploy volleyball-simulator \
           --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/volleyball-simulator/volleyball-simulator:${{ github.sha }} \
@@ -92,4 +94,4 @@ jobs:
           --max-instances 10 \
           --timeout 300 \
           --port 8080 \
-          --set-env-vars FIREBASE_ADMIN_KEY=$(echo "${{ secrets.FIREBASE_ADMIN_KEY }}" | base64)
+          --set-env-vars "FIREBASE_ADMIN_KEY=${FIREBASE_KEY}"
