@@ -82,7 +82,7 @@ The system supports 12 fictional countries, each with unique player attribute mo
 
 ### Create a 24-hour test season with all countries:
 ```bash
-curl -X POST https://your-cloud-function-url/start_season \
+curl -X POST https://your-cloud-run-url/start_season \
   -H "Content-Type: application/json" \
   -d '{
     "seasonName": "Test Season Alpha",
@@ -92,7 +92,7 @@ curl -X POST https://your-cloud-function-url/start_season \
 
 ### Create a 30-day season with specific countries:
 ```bash
-curl -X POST https://your-cloud-function-url/start_season \
+curl -X POST https://your-cloud-run-url/start_season \
   -H "Content-Type: application/json" \
   -d '{
     "seasonName": "Championship Season 2025",

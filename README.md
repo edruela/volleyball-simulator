@@ -284,7 +284,7 @@ Storage:
   - Cloud Storage: FREE (5GB for game assets)
   - CDN distribution included
 
-Estimated Cost: $0-$15/month for MVP (slightly higher than Cloud Functions due to container overhead)
+Estimated Cost: $0-$15/month for MVP (containerized serverless architecture)
 ```
 
 ## Database Schema
@@ -695,7 +695,8 @@ gameConfig/settings {
 
 ```
 volleyball_manager/
-├── main.py                    # Cloud Functions entry points
+├── app.py                     # Flask application entry point (Cloud Run)
+├── main.py                    # Legacy Cloud Functions wrappers (deprecated)
 ├── requirements.txt           # Python dependencies
 ├── game_engine/
 │   ├── __init__.py
