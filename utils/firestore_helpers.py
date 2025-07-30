@@ -217,7 +217,7 @@ class FirestoreHelper:
         try:
             player_ref = self.db.collection("players").document(player_id)
             player_doc = player_ref.get()
-            
+
             if player_doc.exists:
                 player_data = player_doc.to_dict()
                 player_data["id"] = player_doc.id
@@ -254,28 +254,36 @@ class FirestoreHelper:
         """Get players by division tier and position for salary comparison"""
         try:
             players = []
-            
+
             tiers_to_check = [division_tier]
             if division_tier > 1:
                 tiers_to_check.append(division_tier - 1)
             if division_tier > 2:
                 tiers_to_check.append(division_tier - 2)
-            
+
             for tier in tiers_to_check:
-                clubs_ref = self.db.collection("clubs").where("divisionTier", "==", tier).where("countryId", "==", country_id)
+                clubs_ref = (
+                    self.db.collection("clubs")
+                    .where("divisionTier", "==", tier)
+                    .where("countryId", "==", country_id)
+                )
                 clubs = clubs_ref.stream()
-                
+
                 club_ids = [club.id for club in clubs]
-                
+
                 for club_id in club_ids:
-                    players_ref = self.db.collection("players").where("clubId", "==", club_id).where("position", "==", position)
+                    players_ref = (
+                        self.db.collection("players")
+                        .where("clubId", "==", club_id)
+                        .where("position", "==", position)
+                    )
                     club_players = players_ref.stream()
-                    
+
                     for player_doc in club_players:
                         player_data = player_doc.to_dict()
                         player_data["id"] = player_doc.id
                         players.append(player_data)
-            
+
             return players
         except Exception as e:
             print(f"Error getting players by division and position: {e}")

@@ -299,7 +299,9 @@ class PlayerDetail(Resource):
         """Get a specific player"""
         try:
             if not firestore_helper:
-                return {"error": "Service unavailable - running in local testing mode"}, 503
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
 
             player_data = firestore_helper.get_player(player_id)
             if not player_data:
@@ -335,7 +337,9 @@ class PlayerCreate(Resource):
             age = request.json.get("age")
 
             if not firestore_helper:
-                return {"error": "Service unavailable - running in local testing mode"}, 503
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
 
             club_data = firestore_helper.get_club(club_id)
             if not club_data:
@@ -344,23 +348,30 @@ class PlayerCreate(Resource):
             division_tier = club_data.get("divisionTier", 10)
 
             from models.player import generate_random_player
-            player = generate_random_player(club_id, country_id, position, division_tier)
-            
+
+            player = generate_random_player(
+                club_id, country_id, position, division_tier
+            )
+
             if age is not None:
                 if age < 16 or age > 45:
                     return {"error": "Age must be between 16 and 45"}, 400
                 player.age = age
 
             if division_tier <= 9 and not player.is_professional_eligible():
-                return {"error": "Player must be at least 21 years old for professional divisions"}, 400
+                return {
+                    "error": "Player must be at least 21 years old for professional divisions"
+                }, 400
 
             player_id = firestore_helper.save_player(player)
 
-            return jsonify({
-                "playerId": player_id,
-                "message": "Player created successfully",
-                "player": player.to_dict()
-            })
+            return jsonify(
+                {
+                    "playerId": player_id,
+                    "message": "Player created successfully",
+                    "player": player.to_dict(),
+                }
+            )
 
         except Exception as e:
             return {"error": f"Internal server error: {str(e)}"}, 500
@@ -392,13 +403,16 @@ class PlayerContractRenewal(Resource):
                 return {"error": "Salary and years must be positive"}, 400
 
             if not firestore_helper:
-                return {"error": "Service unavailable - running in local testing mode"}, 503
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
 
             player_data = firestore_helper.get_player(player_id)
             if not player_data:
                 return {"error": "Player not found"}, 404
 
             from models.player import Player
+
             player = Player.from_dict(player_data)
 
             club_data = firestore_helper.get_club(player.club_id)
@@ -412,7 +426,9 @@ class PlayerContractRenewal(Resource):
             )
 
             if similar_players:
-                total_salary = sum(p.get("contract", {}).get("salary", 0) for p in similar_players)
+                total_salary = sum(
+                    p.get("contract", {}).get("salary", 0) for p in similar_players
+                )
                 avg_salary = int(total_salary / len(similar_players))
             else:
                 avg_salary = 0
@@ -425,22 +441,22 @@ class PlayerContractRenewal(Resource):
                 "yearsOffered": years_offered,
                 "accepted": accepts_offer,
                 "averageSimilarSalary": avg_salary,
-                "similarPlayersCount": len(similar_players)
+                "similarPlayersCount": len(similar_players),
             }
 
             if accepts_offer:
                 player.contract.salary = offered_salary
                 player.contract.years_remaining = years_offered
-                
+
                 update_data = {
                     "contract": {
                         "salary": offered_salary,
                         "years_remaining": years_offered,
                         "bonus_clause": player.contract.bonus_clause,
-                        "transfer_clause": player.contract.transfer_clause
+                        "transfer_clause": player.contract.transfer_clause,
                     }
                 }
-                
+
                 firestore_helper.update_player(player_id, update_data)
                 response_data["message"] = "Contract renewal accepted and updated"
             else:
@@ -462,13 +478,16 @@ class PlayerRetirement(Resource):
         """Retire a player"""
         try:
             if not firestore_helper:
-                return {"error": "Service unavailable - running in local testing mode"}, 503
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
 
             player_data = firestore_helper.get_player(player_id)
             if not player_data:
                 return {"error": "Player not found"}, 404
 
             from models.player import Player
+
             player = Player.from_dict(player_data)
 
             should_retire = player.should_retire()
@@ -476,17 +495,18 @@ class PlayerRetirement(Resource):
             response_data = {
                 "playerId": player_id,
                 "playerAge": player.age,
-                "retired": should_retire
+                "retired": should_retire,
             }
 
             if should_retire:
                 from datetime import datetime
+
                 update_data = {
                     "retired": True,
                     "retiredAt": datetime.now().isoformat(),
-                    "clubId": None
+                    "clubId": None,
                 }
-                
+
                 firestore_helper.update_player(player_id, update_data)
                 response_data["message"] = "Player has retired"
             else:
@@ -524,13 +544,16 @@ class PlayerTransferAssessment(Resource):
                 return {"error": "Salary must be positive"}, 400
 
             if not firestore_helper:
-                return {"error": "Service unavailable - running in local testing mode"}, 503
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
 
             player_data = firestore_helper.get_player(player_id)
             if not player_data:
                 return {"error": "Player not found"}, 404
 
             from models.player import Player
+
             player = Player.from_dict(player_data)
 
             current_club_data = firestore_helper.get_club(player.club_id)
@@ -545,7 +568,9 @@ class PlayerTransferAssessment(Resource):
             target_club_tier = target_club_data.get("divisionTier", 10)
 
             if target_club_tier <= 9 and not player.is_professional_eligible():
-                return {"error": "Player must be at least 21 years old for professional divisions"}, 400
+                return {
+                    "error": "Player must be at least 21 years old for professional divisions"
+                }, 400
 
             accepts_transfer = player.evaluate_transfer_offer(
                 offered_salary, target_club_tier, current_club_tier
@@ -558,7 +583,7 @@ class PlayerTransferAssessment(Resource):
                 "targetClubId": target_club_id,
                 "currentClubTier": current_club_tier,
                 "targetClubTier": target_club_tier,
-                "accepted": accepts_transfer
+                "accepted": accepts_transfer,
             }
 
             if accepts_transfer:

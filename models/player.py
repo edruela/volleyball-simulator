@@ -226,23 +226,34 @@ class Player:
             retirement_chance = (self.age - 35) * 0.15  # 15% per year after 35
             return random.random() < retirement_chance
 
-    def evaluate_contract_offer(self, offered_salary: int, similar_players_avg_salary: int) -> bool:
+    def evaluate_contract_offer(
+        self, offered_salary: int, similar_players_avg_salary: int
+    ) -> bool:
         """Evaluate if player accepts contract renewal offer"""
         if similar_players_avg_salary == 0:
             return offered_salary >= self.contract.salary * 0.9
-        
+
         minimum_acceptable = similar_players_avg_salary * 1.1  # 110% of average
         return offered_salary >= minimum_acceptable
 
-    def evaluate_transfer_offer(self, offered_salary: int, target_club_tier: int, current_club_tier: int) -> bool:
+    def evaluate_transfer_offer(
+        self, offered_salary: int, target_club_tier: int, current_club_tier: int
+    ) -> bool:
         """Evaluate if player accepts transfer offer"""
-        salary_improvement = offered_salary > self.contract.salary * 1.05  # At least 5% salary increase
-        club_improvement = target_club_tier < current_club_tier  # Lower tier number = better division
-        
+        salary_improvement = (
+            offered_salary > self.contract.salary * 1.05
+        )  # At least 5% salary increase
+        club_improvement = (
+            target_club_tier < current_club_tier
+        )  # Lower tier number = better division
+
         if club_improvement and salary_improvement:
             return True
         elif club_improvement:
-            return target_club_tier <= current_club_tier - 2 or offered_salary >= self.contract.salary * 0.95
+            return (
+                target_club_tier <= current_club_tier - 2
+                or offered_salary >= self.contract.salary * 0.95
+            )
         elif salary_improvement:
             return offered_salary >= self.contract.salary * 1.2
         else:

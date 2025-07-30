@@ -309,8 +309,8 @@ class TestPlayerEndpoints:
                 "salary": 50000,
                 "yearsRemaining": 2,
                 "bonusClause": 5000,
-                "transferClause": 100000
-            }
+                "transferClause": 100000,
+            },
         }
 
         mock_firestore_helper.get_player.return_value = mock_player_data
@@ -335,12 +335,8 @@ class TestPlayerEndpoints:
 
     def test_create_player_success(self, client, mock_firestore_helper):
         """Test successful player creation"""
-        mock_club_data = {
-            "id": "test_club",
-            "name": "Test Club",
-            "divisionTier": 10
-        }
-        
+        mock_club_data = {"id": "test_club", "name": "Test Club", "divisionTier": 10}
+
         mock_firestore_helper.get_club.return_value = mock_club_data
         mock_firestore_helper.save_player.return_value = "new_player_123"
 
@@ -348,7 +344,7 @@ class TestPlayerEndpoints:
             "clubId": "test_club",
             "countryId": "volcania",
             "position": "OH",
-            "age": 25
+            "age": 25,
         }
 
         response = client.post(
@@ -367,16 +363,16 @@ class TestPlayerEndpoints:
         mock_club_data = {
             "id": "test_club",
             "name": "Test Club",
-            "divisionTier": 5  # Professional division
+            "divisionTier": 5,  # Professional division
         }
-        
+
         mock_firestore_helper.get_club.return_value = mock_club_data
 
         player_data = {
             "clubId": "test_club",
             "countryId": "volcania",
             "position": "OH",
-            "age": 20  # Under 21
+            "age": 20,  # Under 21
         }
 
         response = client.post(
@@ -414,19 +410,14 @@ class TestPlayerEndpoints:
                 "strength": 70,
                 "agility": 65,
                 "jump_height": 80,
-                "speed": 60
+                "speed": 60,
             },
-            "condition": {
-                "fatigue": 10,
-                "fitness": 90,
-                "morale": 80,
-                "injury": None
-            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
             "contract": {
                 "salary": 50000,
                 "years_remaining": 1,
                 "bonus_clause": 5000,
-                "transfer_clause": 100000
+                "transfer_clause": 100000,
             },
             "stats": {
                 "matches_played": 15,
@@ -436,29 +427,28 @@ class TestPlayerEndpoints:
                 "blocks": 25,
                 "aces": 12,
                 "digs": 30,
-                "assists": 5
-            }
+                "assists": 5,
+            },
         }
 
-        mock_club_data = {
-            "id": "test_club",
-            "divisionTier": 10
-        }
+        mock_club_data = {"id": "test_club", "divisionTier": 10}
 
         mock_similar_players = [
             {"contract": {"salary": 45000}},
             {"contract": {"salary": 55000}},
-            {"contract": {"salary": 50000}}
+            {"contract": {"salary": 50000}},
         ]
 
         mock_firestore_helper.get_player.return_value = mock_player_data
         mock_firestore_helper.get_club.return_value = mock_club_data
-        mock_firestore_helper.get_players_by_division_and_position.return_value = mock_similar_players
+        mock_firestore_helper.get_players_by_division_and_position.return_value = (
+            mock_similar_players
+        )
         mock_firestore_helper.update_player.return_value = True
 
         renewal_data = {
             "offeredSalary": 60000,  # Above 110% of average (55000)
-            "yearsOffered": 3
+            "yearsOffered": 3,
         }
 
         response = client.post(
@@ -497,19 +487,14 @@ class TestPlayerEndpoints:
                 "strength": 70,
                 "agility": 65,
                 "jump_height": 80,
-                "speed": 60
+                "speed": 60,
             },
-            "condition": {
-                "fatigue": 10,
-                "fitness": 90,
-                "morale": 80,
-                "injury": None
-            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
             "contract": {
                 "salary": 50000,
                 "years_remaining": 1,
                 "bonus_clause": 5000,
-                "transfer_clause": 100000
+                "transfer_clause": 100000,
             },
             "stats": {
                 "matches_played": 15,
@@ -519,28 +504,27 @@ class TestPlayerEndpoints:
                 "blocks": 25,
                 "aces": 12,
                 "digs": 30,
-                "assists": 5
-            }
+                "assists": 5,
+            },
         }
 
-        mock_club_data = {
-            "id": "test_club",
-            "divisionTier": 10
-        }
+        mock_club_data = {"id": "test_club", "divisionTier": 10}
 
         mock_similar_players = [
             {"contract": {"salary": 60000}},
             {"contract": {"salary": 65000}},
-            {"contract": {"salary": 70000}}
+            {"contract": {"salary": 70000}},
         ]
 
         mock_firestore_helper.get_player.return_value = mock_player_data
         mock_firestore_helper.get_club.return_value = mock_club_data
-        mock_firestore_helper.get_players_by_division_and_position.return_value = mock_similar_players
+        mock_firestore_helper.get_players_by_division_and_position.return_value = (
+            mock_similar_players
+        )
 
         renewal_data = {
             "offeredSalary": 50000,  # Below 110% of average (71500)
-            "yearsOffered": 3
+            "yearsOffered": 3,
         }
 
         response = client.post(
@@ -579,19 +563,14 @@ class TestPlayerEndpoints:
                 "strength": 70,
                 "agility": 65,
                 "jump_height": 80,
-                "speed": 60
+                "speed": 60,
             },
-            "condition": {
-                "fatigue": 10,
-                "fitness": 90,
-                "morale": 80,
-                "injury": None
-            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
             "contract": {
                 "salary": 50000,
                 "years_remaining": 2,
                 "bonus_clause": 5000,
-                "transfer_clause": 100000
+                "transfer_clause": 100000,
             },
             "stats": {
                 "matches_played": 15,
@@ -601,8 +580,8 @@ class TestPlayerEndpoints:
                 "blocks": 25,
                 "aces": 12,
                 "digs": 30,
-                "assists": 5
-            }
+                "assists": 5,
+            },
         }
 
         mock_firestore_helper.get_player.return_value = mock_player_data
@@ -639,19 +618,14 @@ class TestPlayerEndpoints:
                 "strength": 70,
                 "agility": 65,
                 "jump_height": 80,
-                "speed": 60
+                "speed": 60,
             },
-            "condition": {
-                "fatigue": 10,
-                "fitness": 90,
-                "morale": 80,
-                "injury": None
-            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
             "contract": {
                 "salary": 50000,
                 "years_remaining": 2,
                 "bonus_clause": 5000,
-                "transfer_clause": 100000
+                "transfer_clause": 100000,
             },
             "stats": {
                 "matches_played": 15,
@@ -661,26 +635,23 @@ class TestPlayerEndpoints:
                 "blocks": 25,
                 "aces": 12,
                 "digs": 30,
-                "assists": 5
-            }
+                "assists": 5,
+            },
         }
 
-        mock_current_club = {
-            "id": "current_club",
-            "divisionTier": 10
-        }
+        mock_current_club = {"id": "current_club", "divisionTier": 10}
 
-        mock_target_club = {
-            "id": "target_club",
-            "divisionTier": 5  # Better division
-        }
+        mock_target_club = {"id": "target_club", "divisionTier": 5}  # Better division
 
         mock_firestore_helper.get_player.return_value = mock_player_data
-        mock_firestore_helper.get_club.side_effect = [mock_current_club, mock_target_club]
+        mock_firestore_helper.get_club.side_effect = [
+            mock_current_club,
+            mock_target_club,
+        ]
 
         transfer_data = {
             "offeredSalary": 60000,  # Higher salary
-            "targetClubId": "target_club"
+            "targetClubId": "target_club",
         }
 
         response = client.post(
@@ -719,19 +690,14 @@ class TestPlayerEndpoints:
                 "strength": 70,
                 "agility": 65,
                 "jump_height": 80,
-                "speed": 60
+                "speed": 60,
             },
-            "condition": {
-                "fatigue": 10,
-                "fitness": 90,
-                "morale": 80,
-                "injury": None
-            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
             "contract": {
                 "salary": 50000,
                 "years_remaining": 2,
                 "bonus_clause": 5000,
-                "transfer_clause": 100000
+                "transfer_clause": 100000,
             },
             "stats": {
                 "matches_played": 15,
@@ -741,26 +707,23 @@ class TestPlayerEndpoints:
                 "blocks": 25,
                 "aces": 12,
                 "digs": 30,
-                "assists": 5
-            }
+                "assists": 5,
+            },
         }
 
-        mock_current_club = {
-            "id": "current_club",
-            "divisionTier": 5
-        }
+        mock_current_club = {"id": "current_club", "divisionTier": 5}
 
-        mock_target_club = {
-            "id": "target_club",
-            "divisionTier": 10  # Worse division
-        }
+        mock_target_club = {"id": "target_club", "divisionTier": 10}  # Worse division
 
         mock_firestore_helper.get_player.return_value = mock_player_data
-        mock_firestore_helper.get_club.side_effect = [mock_current_club, mock_target_club]
+        mock_firestore_helper.get_club.side_effect = [
+            mock_current_club,
+            mock_target_club,
+        ]
 
         transfer_data = {
             "offeredSalary": 45000,  # Lower salary
-            "targetClubId": "target_club"
+            "targetClubId": "target_club",
         }
 
         response = client.post(
