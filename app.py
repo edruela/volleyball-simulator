@@ -1,6 +1,6 @@
 """
 Flask application for Volleyball Manager
-Converted from Cloud Functions to Cloud Run deployment
+Cloud Run deployment with containerized serverless architecture
 """
 
 import os
