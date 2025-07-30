@@ -4,7 +4,7 @@ Cloud Functions entry points for Volleyball Manager
 
 from typing import Dict, Any, Union, Tuple, Optional
 import os
-from flask import Flask, Request
+from flask import Flask, Request, jsonify
 from flask_restx import Api, Resource, fields  # type: ignore
 from google.cloud import firestore  # type: ignore
 from game_engine.match_simulation import VolleyballSimulator
@@ -94,24 +94,31 @@ class SimulateMatch(Resource):
         try:
             request_json = api.payload
             if not request_json:
-                return {"error": "No JSON data provided"}, 400
+                return jsonify({"error": "No JSON data provided"}), 400
 
             home_club_id = request_json.get("homeClubId")
             away_club_id = request_json.get("awayClubId")
 
             if not home_club_id or not away_club_id:
-                return {"error": "Missing club IDs"}, 400
+                return jsonify({"error": "Missing club IDs"}), 400
 
             if not firestore_helper or not volleyball_sim:
-                return {
-                    "error": ("Service unavailable - running in local testing mode")
-                }, 503
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Service unavailable - running in local testing mode"
+                            )
+                        }
+                    ),
+                    503,
+                )
 
             home_club_data = firestore_helper.get_club(home_club_id)
             away_club_data = firestore_helper.get_club(away_club_id)
 
             if not home_club_data or not away_club_data:
-                return {"error": "Club not found"}, 404
+                return jsonify({"error": "Club not found"}), 404
 
             home_players = firestore_helper.get_club_players(home_club_id)
             away_players = firestore_helper.get_club_players(away_club_id)
@@ -149,10 +156,10 @@ class SimulateMatch(Resource):
             match_id = firestore_helper.save_match(match_result)
             match_result["matchId"] = match_id
 
-            return match_result
+            return jsonify(match_result)
 
         except Exception as e:
-            return {"error": f"Match simulation failed: {str(e)}"}, 500
+            return jsonify({"error": f"Match simulation failed: {str(e)}"}), 500
 
 
 @api.route("/club")
@@ -169,24 +176,31 @@ class GetClub(Resource):
 
             club_id = request.args.get("clubId")
             if not club_id:
-                return {"error": "Missing clubId parameter"}, 400
+                return jsonify({"error": "Missing clubId parameter"}), 400
 
             if not firestore_helper:
-                return {
-                    "error": ("Service unavailable - running in local testing mode")
-                }, 503
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Service unavailable - running in local testing mode"
+                            )
+                        }
+                    ),
+                    503,
+                )
 
             club_data = firestore_helper.get_club(club_id)
             if not club_data:
-                return {"error": "Club not found"}, 404
+                return jsonify({"error": "Club not found"}), 404
 
             players = firestore_helper.get_club_players(club_id)
             club_data["players"] = players
 
-            return club_data
+            return jsonify(club_data)
 
         except Exception as e:
-            return {"error": f"Failed to get club: {str(e)}"}, 500
+            return jsonify({"error": f"Failed to get club: {str(e)}"}), 500
 
 
 @api.route("/club")
@@ -201,17 +215,24 @@ class CreateClub(Resource):
         try:
             request_json = api.payload
             if not request_json:
-                return {"error": "No JSON data provided"}, 400
+                return jsonify({"error": "No JSON data provided"}), 400
 
             required_fields = ["name", "countryId", "ownerId"]
             for field in required_fields:
                 if field not in request_json:
-                    return {"error": f"Missing required field: {field}"}, 400
+                    return jsonify({"error": f"Missing required field: {field}"}), 400
 
             if not firestore_helper:
-                return {
-                    "error": ("Service unavailable - running in local testing mode")
-                }, 503
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Service unavailable - running in local testing mode"
+                            )
+                        }
+                    ),
+                    503,
+                )
 
             club_id = firestore_helper.create_club(request_json)
 
@@ -219,14 +240,16 @@ class CreateClub(Resource):
                 club_id, request_json["countryId"]
             )
 
-            return {
-                "clubId": club_id,
-                "message": "Club created successfully",
-                "playersGenerated": len(initial_players),
-            }
+            return jsonify(
+                {
+                    "clubId": club_id,
+                    "message": "Club created successfully",
+                    "playersGenerated": len(initial_players),
+                }
+            )
 
         except Exception as e:
-            return {"error": f"Failed to create club: {str(e)}"}, 500
+            return jsonify({"error": f"Failed to create club: {str(e)}"}), 500
 
 
 @api.route("/league-standings")
@@ -249,23 +272,35 @@ class GetLeagueStandings(Resource):
             division_tier = request.args.get("divisionTier", type=int)
 
             if not country_id or division_tier is None:
-                return {"error": "Missing countryId or divisionTier parameters"}, 400
+                return (
+                    jsonify({"error": "Missing countryId or divisionTier parameters"}),
+                    400,
+                )
 
             if not firestore_helper:
-                return {
-                    "error": ("Service unavailable - running in local testing mode")
-                }, 503
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Service unavailable - running in local testing mode"
+                            )
+                        }
+                    ),
+                    503,
+                )
 
             standings = firestore_helper.get_league_standings(country_id, division_tier)
 
-            return {
-                "countryId": country_id,
-                "divisionTier": division_tier,
-                "standings": standings,
-            }
+            return jsonify(
+                {
+                    "countryId": country_id,
+                    "divisionTier": division_tier,
+                    "standings": standings,
+                }
+            )
 
         except Exception as e:
-            return {"error": f"Failed to get standings: {str(e)}"}, 500
+            return jsonify({"error": f"Failed to get standings: {str(e)}"}), 500
 
 
 @api.route("/start-season")
@@ -283,24 +318,30 @@ class StartSeason(Resource):
         try:
             request_json = api.payload
             if not request_json:
-                return {"error": "No JSON data provided"}, 400
+                return jsonify({"error": "No JSON data provided"}), 400
 
             season_name = request_json.get("seasonName")
             duration_minutes = request_json.get("durationMinutes")
             participating_countries = request_json.get("participatingCountries")
 
             if not season_name:
-                return {"error": "Missing seasonName parameter"}, 400
+                return jsonify({"error": "Missing seasonName parameter"}), 400
 
             if duration_minutes is None:
-                return {"error": "Missing durationMinutes parameter"}, 400
+                return jsonify({"error": "Missing durationMinutes parameter"}), 400
 
             if not isinstance(duration_minutes, int) or duration_minutes <= 0:
-                return {"error": "durationMinutes must be a positive integer"}, 400
+                return (
+                    jsonify({"error": "durationMinutes must be a positive integer"}),
+                    400,
+                )
 
             if participating_countries is not None:
                 if not isinstance(participating_countries, list):
-                    return {"error": "participatingCountries must be a list"}, 400
+                    return (
+                        jsonify({"error": "participatingCountries must be a list"}),
+                        400,
+                    )
 
                 from utils.constants import COUNTRIES
 
@@ -308,12 +349,22 @@ class StartSeason(Resource):
                     c for c in participating_countries if c not in COUNTRIES
                 ]
                 if invalid_countries:
-                    return {"error": f"Invalid countries: {invalid_countries}"}, 400
+                    return (
+                        jsonify({"error": f"Invalid countries: {invalid_countries}"}),
+                        400,
+                    )
 
             if not season_manager:
-                return {
-                    "error": ("Service unavailable - running in local testing mode")
-                }, 503
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                "Service unavailable - running in local testing mode"
+                            )
+                        }
+                    ),
+                    503,
+                )
 
             result = season_manager.create_season(
                 season_name=season_name,
@@ -322,18 +373,20 @@ class StartSeason(Resource):
             )
 
             if result.success:
-                return {
-                    "seasonId": result.season_id,
-                    "message": result.message,
-                    "competitionsCreated": result.competitions_created,
-                    "participatingCountries": result.participating_countries,
-                    "durationMinutes": duration_minutes,
-                }
+                return jsonify(
+                    {
+                        "seasonId": result.season_id,
+                        "message": result.message,
+                        "competitionsCreated": result.competitions_created,
+                        "participatingCountries": result.participating_countries,
+                        "durationMinutes": duration_minutes,
+                    }
+                )
             else:
-                return {"error": result.message}, 400
+                return jsonify({"error": result.message}), 400
 
         except Exception as e:
-            return {"error": f"Failed to start season: {str(e)}"}, 500
+            return jsonify({"error": f"Failed to start season: {str(e)}"}), 500
 
 
 # Cloud Functions compatibility wrappers
