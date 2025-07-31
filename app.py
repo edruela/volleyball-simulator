@@ -25,6 +25,7 @@ api = Api(
 match_ns = api.namespace("matches", description="Match operations")
 club_ns = api.namespace("clubs", description="Club operations")
 league_ns = api.namespace("leagues", description="League operations")
+player_ns = api.namespace("players", description="Player operations")
 
 # Define models for request/response documentation
 tactics_model = api.model(
@@ -51,6 +52,32 @@ club_request = api.model(
         "name": fields.String(required=True, description="Club name"),
         "countryId": fields.String(required=True, description="Country ID"),
         "ownerId": fields.String(required=True, description="Owner ID"),
+    },
+)
+
+player_request = api.model(
+    "PlayerRequest",
+    {
+        "clubId": fields.String(required=True, description="Club ID"),
+        "countryId": fields.String(required=True, description="Country ID"),
+        "position": fields.String(required=True, description="Player position"),
+        "age": fields.Integer(description="Player age"),
+    },
+)
+
+contract_renewal_request = api.model(
+    "ContractRenewalRequest",
+    {
+        "offeredSalary": fields.Integer(required=True, description="Offered salary"),
+        "yearsOffered": fields.Integer(required=True, description="Contract years"),
+    },
+)
+
+transfer_assessment_request = api.model(
+    "TransferAssessmentRequest",
+    {
+        "offeredSalary": fields.Integer(required=True, description="Offered salary"),
+        "targetClubId": fields.String(required=True, description="Target club ID"),
     },
 )
 
@@ -260,6 +287,314 @@ class LeagueStandings(Resource):
 
         except Exception as e:
             return {"error": f"Failed to get standings: {str(e)}"}, 500
+
+
+@player_ns.route("/<string:player_id>")
+class PlayerDetail(Resource):
+    @player_ns.response(200, "Success")
+    @player_ns.response(404, "Player not found")
+    @player_ns.response(401, "Authentication required")
+    @require_auth
+    def get(self, player_id):
+        """Get a specific player"""
+        try:
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            player_data = firestore_helper.get_player(player_id)
+            if not player_data:
+                return {"error": "Player not found"}, 404
+
+            return jsonify(player_data)
+
+        except Exception as e:
+            return {"error": f"Internal server error: {str(e)}"}, 500
+
+
+@player_ns.route("")
+class PlayerCreate(Resource):
+    @player_ns.expect(player_request)
+    @player_ns.response(200, "Success")
+    @player_ns.response(400, "Invalid request")
+    @player_ns.response(401, "Authentication required")
+    @require_auth
+    def post(self):
+        """Create a new player"""
+        try:
+            if not request.json:
+                return {"error": "No JSON data provided"}, 400
+
+            required_fields = ["clubId", "countryId", "position"]
+            for field in required_fields:
+                if field not in request.json:
+                    return {"error": f"Missing required field: {field}"}, 400
+
+            club_id = request.json["clubId"]
+            country_id = request.json["countryId"]
+            position = request.json["position"]
+            age = request.json.get("age")
+
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            club_data = firestore_helper.get_club(club_id)
+            if not club_data:
+                return {"error": "Club not found"}, 404
+
+            division_tier = club_data.get("divisionTier", 10)
+
+            from models.player import generate_random_player
+
+            player = generate_random_player(
+                club_id, country_id, position, division_tier
+            )
+
+            if age is not None:
+                if age < 16 or age > 45:
+                    return {"error": "Age must be between 16 and 45"}, 400
+                player.age = age
+
+            if division_tier <= 9 and not player.is_professional_eligible():
+                return {
+                    "error": "Player must be at least 21 years old for professional divisions"
+                }, 400
+
+            player_id = firestore_helper.save_player(player)
+
+            return jsonify(
+                {
+                    "playerId": player_id,
+                    "message": "Player created successfully",
+                    "player": player.to_dict(),
+                }
+            )
+
+        except Exception as e:
+            return {"error": f"Internal server error: {str(e)}"}, 500
+
+
+@player_ns.route("/<string:player_id>/renew-contract")
+class PlayerContractRenewal(Resource):
+    @player_ns.expect(contract_renewal_request)
+    @player_ns.response(200, "Success")
+    @player_ns.response(400, "Invalid request")
+    @player_ns.response(404, "Player not found")
+    @player_ns.response(401, "Authentication required")
+    @require_auth
+    def post(self, player_id):
+        """Renew player contract"""
+        try:
+            if not request.json:
+                return {"error": "No JSON data provided"}, 400
+
+            required_fields = ["offeredSalary", "yearsOffered"]
+            for field in required_fields:
+                if field not in request.json:
+                    return {"error": f"Missing required field: {field}"}, 400
+
+            offered_salary = request.json["offeredSalary"]
+            years_offered = request.json["yearsOffered"]
+
+            if offered_salary <= 0 or years_offered <= 0:
+                return {"error": "Salary and years must be positive"}, 400
+
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            player_data = firestore_helper.get_player(player_id)
+            if not player_data:
+                return {"error": "Player not found"}, 404
+
+            from models.player import Player
+
+            player = Player.from_dict(player_data)
+
+            club_data = firestore_helper.get_club(player.club_id)
+            if not club_data:
+                return {"error": "Player's club not found"}, 404
+
+            division_tier = club_data.get("divisionTier", 10)
+
+            similar_players = firestore_helper.get_players_by_division_and_position(
+                division_tier, player.position, player.country_id
+            )
+
+            if similar_players:
+                total_salary = sum(
+                    p.get("contract", {}).get("salary", 0) for p in similar_players
+                )
+                avg_salary = int(total_salary / len(similar_players))
+            else:
+                avg_salary = 0
+
+            accepts_offer = player.evaluate_contract_offer(offered_salary, avg_salary)
+
+            response_data = {
+                "playerId": player_id,
+                "offeredSalary": offered_salary,
+                "yearsOffered": years_offered,
+                "accepted": accepts_offer,
+                "averageSimilarSalary": avg_salary,
+                "similarPlayersCount": len(similar_players),
+            }
+
+            if accepts_offer:
+                player.contract.salary = offered_salary
+                player.contract.years_remaining = years_offered
+
+                update_data = {
+                    "contract": {
+                        "salary": offered_salary,
+                        "years_remaining": years_offered,
+                        "bonus_clause": player.contract.bonus_clause,
+                        "transfer_clause": player.contract.transfer_clause,
+                    }
+                }
+
+                firestore_helper.update_player(player_id, update_data)
+                response_data["message"] = "Contract renewal accepted and updated"
+            else:
+                response_data["message"] = "Contract renewal rejected"
+
+            return jsonify(response_data)
+
+        except Exception as e:
+            return {"error": f"Internal server error: {str(e)}"}, 500
+
+
+@player_ns.route("/<string:player_id>/retire")
+class PlayerRetirement(Resource):
+    @player_ns.response(200, "Success")
+    @player_ns.response(404, "Player not found")
+    @player_ns.response(401, "Authentication required")
+    @require_auth
+    def post(self, player_id):
+        """Retire a player"""
+        try:
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            player_data = firestore_helper.get_player(player_id)
+            if not player_data:
+                return {"error": "Player not found"}, 404
+
+            from models.player import Player
+
+            player = Player.from_dict(player_data)
+
+            should_retire = player.should_retire()
+
+            response_data = {
+                "playerId": player_id,
+                "playerAge": player.age,
+                "retired": should_retire,
+            }
+
+            if should_retire:
+                from datetime import datetime
+
+                update_data = {
+                    "retired": True,
+                    "retiredAt": datetime.now().isoformat(),
+                    "clubId": None,
+                }
+
+                firestore_helper.update_player(player_id, update_data)
+                response_data["message"] = "Player has retired"
+            else:
+                response_data["message"] = "Player chooses to continue playing"
+
+            return jsonify(response_data)
+
+        except Exception as e:
+            return {"error": f"Internal server error: {str(e)}"}, 500
+
+
+@player_ns.route("/<string:player_id>/assess-transfer")
+class PlayerTransferAssessment(Resource):
+    @player_ns.expect(transfer_assessment_request)
+    @player_ns.response(200, "Success")
+    @player_ns.response(400, "Invalid request")
+    @player_ns.response(404, "Player not found")
+    @player_ns.response(401, "Authentication required")
+    @require_auth
+    def post(self, player_id):
+        """Assess transfer offer for a player"""
+        try:
+            if not request.json:
+                return {"error": "No JSON data provided"}, 400
+
+            required_fields = ["offeredSalary", "targetClubId"]
+            for field in required_fields:
+                if field not in request.json:
+                    return {"error": f"Missing required field: {field}"}, 400
+
+            offered_salary = request.json["offeredSalary"]
+            target_club_id = request.json["targetClubId"]
+
+            if offered_salary <= 0:
+                return {"error": "Salary must be positive"}, 400
+
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            player_data = firestore_helper.get_player(player_id)
+            if not player_data:
+                return {"error": "Player not found"}, 404
+
+            from models.player import Player
+
+            player = Player.from_dict(player_data)
+
+            current_club_data = firestore_helper.get_club(player.club_id)
+            if not current_club_data:
+                return {"error": "Player's current club not found"}, 404
+
+            target_club_data = firestore_helper.get_club(target_club_id)
+            if not target_club_data:
+                return {"error": "Target club not found"}, 404
+
+            current_club_tier = current_club_data.get("divisionTier", 10)
+            target_club_tier = target_club_data.get("divisionTier", 10)
+
+            if target_club_tier <= 9 and not player.is_professional_eligible():
+                return {
+                    "error": "Player must be at least 21 years old for professional divisions"
+                }, 400
+
+            accepts_transfer = player.evaluate_transfer_offer(
+                offered_salary, target_club_tier, current_club_tier
+            )
+
+            response_data = {
+                "playerId": player_id,
+                "offeredSalary": offered_salary,
+                "currentSalary": player.contract.salary,
+                "targetClubId": target_club_id,
+                "currentClubTier": current_club_tier,
+                "targetClubTier": target_club_tier,
+                "accepted": accepts_transfer,
+            }
+
+            if accepts_transfer:
+                response_data["message"] = "Transfer offer accepted"
+            else:
+                response_data["message"] = "Transfer offer rejected"
+
+            return jsonify(response_data)
+
+        except Exception as e:
+            return {"error": f"Internal server error: {str(e)}"}, 500
 
 
 @api.route("/health")

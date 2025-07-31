@@ -292,5 +292,451 @@ class TestAuthBypass:
                 del os.environ["SKIP_AUTH"]
 
 
+class TestPlayerEndpoints:
+    """Test player-related API endpoints"""
+
+    def test_get_player_success(self, client, mock_firestore_helper):
+        """Test successful player retrieval"""
+        mock_player_data = {
+            "id": "test_player_123",
+            "firstName": "John",
+            "lastName": "Doe",
+            "clubId": "test_club",
+            "countryId": "volcania",
+            "age": 25,
+            "position": "OH",
+            "contract": {
+                "salary": 50000,
+                "yearsRemaining": 2,
+                "bonusClause": 5000,
+                "transferClause": 100000,
+            },
+        }
+
+        mock_firestore_helper.get_player.return_value = mock_player_data
+
+        response = client.get("/players/test_player_123")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["firstName"] == "John"
+        assert data["lastName"] == "Doe"
+        assert data["position"] == "OH"
+
+    def test_get_player_not_found(self, client, mock_firestore_helper):
+        """Test player retrieval for non-existent player"""
+        mock_firestore_helper.get_player.return_value = None
+
+        response = client.get("/players/nonexistent")
+
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert "Player not found" in data["error"]
+
+    def test_create_player_success(self, client, mock_firestore_helper):
+        """Test successful player creation"""
+        mock_club_data = {"id": "test_club", "name": "Test Club", "divisionTier": 10}
+
+        mock_firestore_helper.get_club.return_value = mock_club_data
+        mock_firestore_helper.save_player.return_value = "new_player_123"
+
+        player_data = {
+            "clubId": "test_club",
+            "countryId": "volcania",
+            "position": "OH",
+            "age": 25,
+        }
+
+        response = client.post(
+            "/players",
+            data=json.dumps(player_data),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["playerId"] == "new_player_123"
+        assert "Player created successfully" in data["message"]
+
+    def test_create_player_underage_professional(self, client, mock_firestore_helper):
+        """Test player creation with underage player for professional division"""
+        mock_club_data = {
+            "id": "test_club",
+            "name": "Test Club",
+            "divisionTier": 5,  # Professional division
+        }
+
+        mock_firestore_helper.get_club.return_value = mock_club_data
+
+        player_data = {
+            "clubId": "test_club",
+            "countryId": "volcania",
+            "position": "OH",
+            "age": 20,  # Under 21
+        }
+
+        response = client.post(
+            "/players",
+            data=json.dumps(player_data),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert "must be at least 21 years old" in data["error"]
+
+    def test_contract_renewal_accepted(self, client, mock_firestore_helper):
+        """Test contract renewal that gets accepted"""
+        mock_player_data = {
+            "id": "test_player",
+            "first_name": "John",
+            "last_name": "Doe",
+            "club_id": "test_club",
+            "country_id": "volcania",
+            "age": 25,
+            "position": "OH",
+            "attributes": {
+                "spike_power": 75,
+                "spike_accuracy": 70,
+                "block_timing": 60,
+                "passing_accuracy": 65,
+                "setting_precision": 50,
+                "serve_power": 60,
+                "serve_accuracy": 55,
+                "court_vision": 65,
+                "decision_making": 60,
+                "communication": 70,
+                "stamina": 75,
+                "strength": 70,
+                "agility": 65,
+                "jump_height": 80,
+                "speed": 60,
+            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
+            "contract": {
+                "salary": 50000,
+                "years_remaining": 1,
+                "bonus_clause": 5000,
+                "transfer_clause": 100000,
+            },
+            "stats": {
+                "matches_played": 15,
+                "sets_played": 45,
+                "points": 120,
+                "kills": 85,
+                "blocks": 25,
+                "aces": 12,
+                "digs": 30,
+                "assists": 5,
+            },
+        }
+
+        mock_club_data = {"id": "test_club", "divisionTier": 10}
+
+        mock_similar_players = [
+            {"contract": {"salary": 45000}},
+            {"contract": {"salary": 55000}},
+            {"contract": {"salary": 50000}},
+        ]
+
+        mock_firestore_helper.get_player.return_value = mock_player_data
+        mock_firestore_helper.get_club.return_value = mock_club_data
+        mock_firestore_helper.get_players_by_division_and_position.return_value = (
+            mock_similar_players
+        )
+        mock_firestore_helper.update_player.return_value = True
+
+        renewal_data = {
+            "offeredSalary": 60000,  # Above 110% of average (55000)
+            "yearsOffered": 3,
+        }
+
+        response = client.post(
+            "/players/test_player/renew-contract",
+            data=json.dumps(renewal_data),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["accepted"] == True
+        assert "accepted and updated" in data["message"]
+
+    def test_contract_renewal_rejected(self, client, mock_firestore_helper):
+        """Test contract renewal that gets rejected"""
+        mock_player_data = {
+            "id": "test_player",
+            "first_name": "John",
+            "last_name": "Doe",
+            "club_id": "test_club",
+            "country_id": "volcania",
+            "age": 25,
+            "position": "OH",
+            "attributes": {
+                "spike_power": 75,
+                "spike_accuracy": 70,
+                "block_timing": 60,
+                "passing_accuracy": 65,
+                "setting_precision": 50,
+                "serve_power": 60,
+                "serve_accuracy": 55,
+                "court_vision": 65,
+                "decision_making": 60,
+                "communication": 70,
+                "stamina": 75,
+                "strength": 70,
+                "agility": 65,
+                "jump_height": 80,
+                "speed": 60,
+            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
+            "contract": {
+                "salary": 50000,
+                "years_remaining": 1,
+                "bonus_clause": 5000,
+                "transfer_clause": 100000,
+            },
+            "stats": {
+                "matches_played": 15,
+                "sets_played": 45,
+                "points": 120,
+                "kills": 85,
+                "blocks": 25,
+                "aces": 12,
+                "digs": 30,
+                "assists": 5,
+            },
+        }
+
+        mock_club_data = {"id": "test_club", "divisionTier": 10}
+
+        mock_similar_players = [
+            {"contract": {"salary": 60000}},
+            {"contract": {"salary": 65000}},
+            {"contract": {"salary": 70000}},
+        ]
+
+        mock_firestore_helper.get_player.return_value = mock_player_data
+        mock_firestore_helper.get_club.return_value = mock_club_data
+        mock_firestore_helper.get_players_by_division_and_position.return_value = (
+            mock_similar_players
+        )
+
+        renewal_data = {
+            "offeredSalary": 50000,  # Below 110% of average (71500)
+            "yearsOffered": 3,
+        }
+
+        response = client.post(
+            "/players/test_player/renew-contract",
+            data=json.dumps(renewal_data),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["accepted"] == False
+        assert "rejected" in data["message"]
+
+    def test_player_retirement_young_player(self, client, mock_firestore_helper):
+        """Test retirement for young player (should not retire)"""
+        mock_player_data = {
+            "id": "test_player",
+            "first_name": "John",
+            "last_name": "Doe",
+            "club_id": "test_club",
+            "country_id": "volcania",
+            "age": 25,  # Young player
+            "position": "OH",
+            "attributes": {
+                "spike_power": 75,
+                "spike_accuracy": 70,
+                "block_timing": 60,
+                "passing_accuracy": 65,
+                "setting_precision": 50,
+                "serve_power": 60,
+                "serve_accuracy": 55,
+                "court_vision": 65,
+                "decision_making": 60,
+                "communication": 70,
+                "stamina": 75,
+                "strength": 70,
+                "agility": 65,
+                "jump_height": 80,
+                "speed": 60,
+            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
+            "contract": {
+                "salary": 50000,
+                "years_remaining": 2,
+                "bonus_clause": 5000,
+                "transfer_clause": 100000,
+            },
+            "stats": {
+                "matches_played": 15,
+                "sets_played": 45,
+                "points": 120,
+                "kills": 85,
+                "blocks": 25,
+                "aces": 12,
+                "digs": 30,
+                "assists": 5,
+            },
+        }
+
+        mock_firestore_helper.get_player.return_value = mock_player_data
+
+        response = client.post("/players/test_player/retire")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["retired"] == False
+        assert "continue playing" in data["message"]
+
+    def test_transfer_assessment_accepted(self, client, mock_firestore_helper):
+        """Test transfer assessment that gets accepted"""
+        mock_player_data = {
+            "id": "test_player",
+            "first_name": "John",
+            "last_name": "Doe",
+            "club_id": "current_club",
+            "country_id": "volcania",
+            "age": 25,
+            "position": "OH",
+            "attributes": {
+                "spike_power": 75,
+                "spike_accuracy": 70,
+                "block_timing": 60,
+                "passing_accuracy": 65,
+                "setting_precision": 50,
+                "serve_power": 60,
+                "serve_accuracy": 55,
+                "court_vision": 65,
+                "decision_making": 60,
+                "communication": 70,
+                "stamina": 75,
+                "strength": 70,
+                "agility": 65,
+                "jump_height": 80,
+                "speed": 60,
+            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
+            "contract": {
+                "salary": 50000,
+                "years_remaining": 2,
+                "bonus_clause": 5000,
+                "transfer_clause": 100000,
+            },
+            "stats": {
+                "matches_played": 15,
+                "sets_played": 45,
+                "points": 120,
+                "kills": 85,
+                "blocks": 25,
+                "aces": 12,
+                "digs": 30,
+                "assists": 5,
+            },
+        }
+
+        mock_current_club = {"id": "current_club", "divisionTier": 10}
+
+        mock_target_club = {"id": "target_club", "divisionTier": 5}  # Better division
+
+        mock_firestore_helper.get_player.return_value = mock_player_data
+        mock_firestore_helper.get_club.side_effect = [
+            mock_current_club,
+            mock_target_club,
+        ]
+
+        transfer_data = {
+            "offeredSalary": 60000,  # Higher salary
+            "targetClubId": "target_club",
+        }
+
+        response = client.post(
+            "/players/test_player/assess-transfer",
+            data=json.dumps(transfer_data),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["accepted"] == True
+        assert "accepted" in data["message"]
+
+    def test_transfer_assessment_rejected(self, client, mock_firestore_helper):
+        """Test transfer assessment that gets rejected"""
+        mock_player_data = {
+            "id": "test_player",
+            "first_name": "John",
+            "last_name": "Doe",
+            "club_id": "current_club",
+            "country_id": "volcania",
+            "age": 25,
+            "position": "OH",
+            "attributes": {
+                "spike_power": 75,
+                "spike_accuracy": 70,
+                "block_timing": 60,
+                "passing_accuracy": 65,
+                "setting_precision": 50,
+                "serve_power": 60,
+                "serve_accuracy": 55,
+                "court_vision": 65,
+                "decision_making": 60,
+                "communication": 70,
+                "stamina": 75,
+                "strength": 70,
+                "agility": 65,
+                "jump_height": 80,
+                "speed": 60,
+            },
+            "condition": {"fatigue": 10, "fitness": 90, "morale": 80, "injury": None},
+            "contract": {
+                "salary": 50000,
+                "years_remaining": 2,
+                "bonus_clause": 5000,
+                "transfer_clause": 100000,
+            },
+            "stats": {
+                "matches_played": 15,
+                "sets_played": 45,
+                "points": 120,
+                "kills": 85,
+                "blocks": 25,
+                "aces": 12,
+                "digs": 30,
+                "assists": 5,
+            },
+        }
+
+        mock_current_club = {"id": "current_club", "divisionTier": 5}
+
+        mock_target_club = {"id": "target_club", "divisionTier": 10}  # Worse division
+
+        mock_firestore_helper.get_player.return_value = mock_player_data
+        mock_firestore_helper.get_club.side_effect = [
+            mock_current_club,
+            mock_target_club,
+        ]
+
+        transfer_data = {
+            "offeredSalary": 45000,  # Lower salary
+            "targetClubId": "target_club",
+        }
+
+        response = client.post(
+            "/players/test_player/assess-transfer",
+            data=json.dumps(transfer_data),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["accepted"] == False
+        assert "rejected" in data["message"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

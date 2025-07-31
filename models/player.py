@@ -216,6 +216,57 @@ class Player:
 
         return cls(**data)
 
+    def should_retire(self) -> bool:
+        """Determine if player should retire based on age"""
+        if self.age < 35:
+            return False
+        elif self.age >= 42:
+            return True
+        else:
+            retirement_chance = (self.age - 35) * 0.15  # 15% per year after 35
+            return random.random() < retirement_chance
+
+    def evaluate_contract_offer(
+        self, offered_salary: int, similar_players_avg_salary: int
+    ) -> bool:
+        """Evaluate if player accepts contract renewal offer"""
+        if similar_players_avg_salary == 0:
+            return offered_salary >= self.contract.salary * 0.9
+
+        minimum_acceptable = similar_players_avg_salary * 1.1  # 110% of average
+        return offered_salary >= minimum_acceptable
+
+    def evaluate_transfer_offer(
+        self, offered_salary: int, target_club_tier: int, current_club_tier: int
+    ) -> bool:
+        """Evaluate if player accepts transfer offer"""
+        salary_improvement = (
+            offered_salary > self.contract.salary * 1.05
+        )  # At least 5% salary increase
+        club_improvement = (
+            target_club_tier < current_club_tier
+        )  # Lower tier number = better division
+
+        if club_improvement and salary_improvement:
+            return True
+        elif club_improvement:
+            return (
+                target_club_tier <= current_club_tier - 2
+                or offered_salary >= self.contract.salary * 0.95
+            )
+        elif salary_improvement:
+            return offered_salary >= self.contract.salary * 1.2
+        else:
+            return False
+
+    def increment_age(self):
+        """Increment player age for season progression"""
+        self.age += 1
+
+    def is_professional_eligible(self) -> bool:
+        """Check if player meets minimum age for professional play"""
+        return self.age >= 21
+
 
 def generate_random_player(
     club_id: str, country_id: str, position: str, division_tier: int = 10
