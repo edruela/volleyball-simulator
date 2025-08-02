@@ -265,7 +265,9 @@ def initialize_firebase_with_retry(max_retries: int = 3) -> bool:
 
     for attempt in range(max_retries):
         try:
-            logger.info(f"Initializing Firebase with service account key (attempt {attempt + 1}/{max_retries})")
+            logger.info(
+                f"Initializing Firebase with service account key (attempt {attempt + 1}/{max_retries})"
+            )
 
             # Try direct JSON parsing first (for non-base64 keys)
             try:
@@ -278,8 +280,10 @@ def initialize_firebase_with_retry(max_retries: int = 3) -> bool:
                     cred_dict = json.loads(decoded_key)
                     logger.info("Using service account key as base64-encoded JSON")
                 except Exception as decode_error:
-                    raise ValueError(f"Invalid FIREBASE_ADMIN_KEY format: {decode_error}")
-            
+                    raise ValueError(
+                        f"Invalid FIREBASE_ADMIN_KEY format: {decode_error}"
+                    )
+
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
 
@@ -318,7 +322,7 @@ def initialize_firestore_with_retry(max_retries: int = 3) -> Optional[firestore.
 
             # Try to create Firestore client with explicit project ID if available
             project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")
-            
+
             if project_id:
                 logger.info(f"Using explicit project ID: {project_id}")
                 db = firestore.Client(project=project_id)
@@ -335,9 +339,14 @@ def initialize_firestore_with_retry(max_retries: int = 3) -> Optional[firestore.
             except Exception as api_error:
                 # Check if this is an API disabled error
                 error_str = str(api_error).lower()
-                if "api has not been used" in error_str or "service_disabled" in error_str:
+                if (
+                    "api has not been used" in error_str
+                    or "service_disabled" in error_str
+                ):
                     logger.warning(f"Firestore API is disabled: {api_error}")
-                    service_status.add_error("Firestore", f"Firestore API is disabled: {api_error}")
+                    service_status.add_error(
+                        "Firestore", f"Firestore API is disabled: {api_error}"
+                    )
                     return None
                 else:
                     # Other connection errors, re-raise to retry
@@ -349,18 +358,29 @@ def initialize_firestore_with_retry(max_retries: int = 3) -> Optional[firestore.
         except Exception as e:
             error_msg = f"Firestore initialization failed (attempt {attempt + 1}): {e}"
             logger.warning(error_msg)
-            
+
             # Check if this is a credential/authentication error
             error_str = str(e).lower()
-            if any(keyword in error_str for keyword in [
-                "credentials", "authentication", "permission", "access", 
-                "service account", "token", "metadata service", "compute engine"
-            ]):
+            if any(
+                keyword in error_str
+                for keyword in [
+                    "credentials",
+                    "authentication",
+                    "permission",
+                    "access",
+                    "service account",
+                    "token",
+                    "metadata service",
+                    "compute engine",
+                ]
+            ):
                 logger.error(f"Authentication error detected: {e}")
-                logger.info("Suggestion: Ensure Cloud Run service has proper IAM roles or FIREBASE_ADMIN_KEY is set")
+                logger.info(
+                    "Suggestion: Ensure Cloud Run service has proper IAM roles or FIREBASE_ADMIN_KEY is set"
+                )
                 service_status.add_error("Firestore", f"Authentication error: {e}")
                 return None  # Don't retry authentication errors
-            
+
             if attempt == max_retries - 1:
                 service_status.add_error("Firestore", error_msg)
                 return None
