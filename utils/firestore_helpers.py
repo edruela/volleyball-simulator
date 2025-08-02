@@ -553,7 +553,7 @@ class FirestoreHelper:
         """Update match status and result"""
         try:
             match_ref = self.db.collection("matches").document(match_id)
-            update_data = {"status": status, "updatedAt": datetime.now().isoformat()}
+            update_data: Dict[str, Any] = {"status": status, "updatedAt": datetime.now().isoformat()}
 
             if result:
                 update_data["result"] = result
