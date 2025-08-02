@@ -249,26 +249,46 @@ def initialize_firebase_with_retry(max_retries: int = 3) -> bool:
 
     firebase_key = os.getenv("FIREBASE_ADMIN_KEY")
     if not firebase_key:
-        error_msg = "FIREBASE_ADMIN_KEY environment variable not set"
-        service_status.add_error("Firebase", error_msg)
-        return False
+        # Try to use default credentials in Cloud Run
+        logger.info("FIREBASE_ADMIN_KEY not set, attempting to use default credentials")
+        try:
+            # Use default credentials (works in Cloud Run with proper IAM)
+            firebase_admin.initialize_app()
+            logger.info("Firebase initialized successfully with default credentials")
+            service_status.firebase_initialized = True
+            return True
+        except Exception as default_error:
+            logger.warning(f"Default credentials failed: {default_error}")
+            error_msg = "FIREBASE_ADMIN_KEY environment variable not set and default credentials failed"
+            service_status.add_error("Firebase", error_msg)
+            return False
 
     for attempt in range(max_retries):
         try:
-            logger.info(f"Initializing Firebase (attempt {attempt + 1}/{max_retries})")
+            logger.info(f"Initializing Firebase with service account key (attempt {attempt + 1}/{max_retries})")
 
-            # Decode base64 string to JSON
-            decoded_key = base64.b64decode(firebase_key).decode("utf-8")
-            cred_dict = json.loads(decoded_key)
+            # Try direct JSON parsing first (for non-base64 keys)
+            try:
+                cred_dict = json.loads(firebase_key)
+                logger.info("Using service account key as direct JSON")
+            except json.JSONDecodeError:
+                # Fall back to base64 decoding
+                try:
+                    decoded_key = base64.b64decode(firebase_key).decode("utf-8")
+                    cred_dict = json.loads(decoded_key)
+                    logger.info("Using service account key as base64-encoded JSON")
+                except Exception as decode_error:
+                    raise ValueError(f"Invalid FIREBASE_ADMIN_KEY format: {decode_error}")
+            
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
 
-            logger.info("Firebase initialized successfully")
+            logger.info("Firebase initialized successfully with service account key")
             service_status.firebase_initialized = True
             return True
 
         except json.JSONDecodeError as e:
-            error_msg = f"Invalid FIREBASE_ADMIN_KEY format - must be valid base64 encoded JSON: {e}"
+            error_msg = f"Invalid FIREBASE_ADMIN_KEY format - must be valid JSON: {e}"
             service_status.add_error("Firebase", error_msg)
             return False  # Don't retry for invalid format
 
@@ -296,20 +316,51 @@ def initialize_firestore_with_retry(max_retries: int = 3) -> Optional[firestore.
         try:
             logger.info(f"Initializing Firestore (attempt {attempt + 1}/{max_retries})")
 
-            # Try to create Firestore client
-            db = firestore.Client()
+            # Try to create Firestore client with explicit project ID if available
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")
+            
+            if project_id:
+                logger.info(f"Using explicit project ID: {project_id}")
+                db = firestore.Client(project=project_id)
+            else:
+                # Let Google Cloud SDK detect the project automatically
+                logger.info("Using automatic project detection")
+                db = firestore.Client()
 
-            # Test connection with a simple operation
-            test_doc_ref = db.collection("_health_check").document("test")
-            test_doc_ref.get()  # This will raise an exception if connection fails
+            # Test connection with a simple operation (but don't fail if Firestore API is disabled)
+            try:
+                test_doc_ref = db.collection("_health_check").document("test")
+                test_doc_ref.get()  # This will raise an exception if connection fails
+                logger.info("Firestore connected and API is enabled")
+            except Exception as api_error:
+                # Check if this is an API disabled error
+                error_str = str(api_error).lower()
+                if "api has not been used" in error_str or "service_disabled" in error_str:
+                    logger.warning(f"Firestore API is disabled: {api_error}")
+                    service_status.add_error("Firestore", f"Firestore API is disabled: {api_error}")
+                    return None
+                else:
+                    # Other connection errors, re-raise to retry
+                    raise api_error
 
-            logger.info("Firestore connected successfully")
             service_status.firestore_connected = True
             return db
 
         except Exception as e:
             error_msg = f"Firestore initialization failed (attempt {attempt + 1}): {e}"
             logger.warning(error_msg)
+            
+            # Check if this is a credential/authentication error
+            error_str = str(e).lower()
+            if any(keyword in error_str for keyword in [
+                "credentials", "authentication", "permission", "access", 
+                "service account", "token", "metadata service", "compute engine"
+            ]):
+                logger.error(f"Authentication error detected: {e}")
+                logger.info("Suggestion: Ensure Cloud Run service has proper IAM roles or FIREBASE_ADMIN_KEY is set")
+                service_status.add_error("Firestore", f"Authentication error: {e}")
+                return None  # Don't retry authentication errors
+            
             if attempt == max_retries - 1:
                 service_status.add_error("Firestore", error_msg)
                 return None
