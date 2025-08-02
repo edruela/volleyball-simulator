@@ -9,7 +9,7 @@ import sys
 import logging
 import traceback
 import time
-from typing import Optional, Dict, Any, Union, Type
+from typing import Optional, Dict, Any, Type, Union
 from flask import Flask, request, jsonify, g
 from flask_restx import Api, Resource, fields  # type: ignore
 from flask_cors import CORS
@@ -48,21 +48,26 @@ def setup_logging():
 logger = setup_logging()
 
 # Import application modules with error handling
-VolleyballSimulator: Optional[Type] = None
-try:
-    from game_engine.match_simulation import VolleyballSimulator
+VolleyballSimulator: Optional[Type[Any]] = None
+FirestoreHelper: Optional[Type[Any]] = None
 
+try:
+    from game_engine.match_simulation import VolleyballSimulator as _VolleyballSimulator
+
+    VolleyballSimulator = _VolleyballSimulator
     logger.info("Successfully imported VolleyballSimulator")
 except ImportError as e:
     logger.error(f"Failed to import VolleyballSimulator: {e}")
+    VolleyballSimulator = None
 
-FirestoreHelper: Optional[Type] = None
 try:
-    from utils.firestore_helpers import FirestoreHelper
+    from utils.firestore_helpers import FirestoreHelper as _FirestoreHelper
 
+    FirestoreHelper = _FirestoreHelper
     logger.info("Successfully imported FirestoreHelper")
 except ImportError as e:
     logger.error(f"Failed to import FirestoreHelper: {e}")
+    FirestoreHelper = None
 
 try:
     from utils.auth import require_auth
