@@ -207,78 +207,92 @@ class ProcessScheduledMatches(Resource):
         try:
             data = request.get_json() or {}
             current_match_day = data.get("currentMatchDay", 1)
-            
+
             if not firestore_helper:
                 return {
                     "error": "Service unavailable - running in local testing mode"
                 }, 503
-            
-            scheduled_matches = firestore_helper.get_scheduled_matches_up_to_day(current_match_day)
-            
+
+            scheduled_matches = firestore_helper.get_scheduled_matches_up_to_day(
+                current_match_day
+            )
+
             if not scheduled_matches:
-                return {"message": "No scheduled matches to process", "processedCount": 0}
-            
+                return {
+                    "message": "No scheduled matches to process",
+                    "processedCount": 0,
+                }
+
             processed_count = 0
             results = []
-            
+
             for match_data in scheduled_matches:
                 try:
                     home_club_id = match_data["homeClubId"]
                     away_club_id = match_data["awayClubId"]
                     match_id = match_data["id"]
-                    
+
                     home_club = firestore_helper.get_club(home_club_id)
                     away_club = firestore_helper.get_club(away_club_id)
-                    
+
                     if not home_club or not away_club:
                         print(f"Skipping match {match_id}: Club not found")
                         continue
-                    
+
                     home_players = firestore_helper.get_club_players(home_club_id)
                     away_players = firestore_helper.get_club_players(away_club_id)
-                    
+
                     if len(home_players) < 7 or len(away_players) < 7:
                         print(f"Skipping match {match_id}: Not enough players")
                         continue
-                    
-                    home_team = {
-                        "club": home_club,
-                        "players": home_players[:12]
-                    }
-                    
-                    away_team = {
-                        "club": away_club,
-                        "players": away_players[:12]
-                    }
-                    
+
+                    home_team = {"club": home_club, "players": home_players[:12]}
+
+                    away_team = {"club": away_club, "players": away_players[:12]}
+
                     tactics = {
-                        "home": match_data.get("homeTactics", {"formation": "5-1", "intensity": 1.0, "style": "balanced"}),
-                        "away": match_data.get("awayTactics", {"formation": "5-1", "intensity": 1.0, "style": "balanced"})
+                        "home": match_data.get(
+                            "homeTactics",
+                            {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
+                        ),
+                        "away": match_data.get(
+                            "awayTactics",
+                            {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
+                        ),
                     }
-                    
+
                     from game_engine.match_simulation import VolleyballSimulator
+
                     volleyball_sim = VolleyballSimulator()
-                    match_result = volleyball_sim.simulate_match(home_team, away_team, tactics)
-                    
-                    firestore_helper.update_match_status(match_id, "completed", match_result)
-                    
-                    results.append({
-                        "matchId": match_id,
-                        "homeClub": home_club["name"],
-                        "awayClub": away_club["name"],
-                        "result": f"{match_result['homeSets']}-{match_result['awaySets']}"
-                    })
-                    
+                    match_result = volleyball_sim.simulate_match(
+                        home_team, away_team, tactics
+                    )
+
+                    firestore_helper.update_match_status(
+                        match_id, "completed", match_result
+                    )
+
+                    results.append(
+                        {
+                            "matchId": match_id,
+                            "homeClub": home_club["name"],
+                            "awayClub": away_club["name"],
+                            "result": f"{match_result['homeSets']}-{match_result['awaySets']}",
+                        }
+                    )
+
                     processed_count += 1
-                    
+
                 except Exception as match_error:
-                    print(f"Error processing match {match_data.get('id', 'unknown')}: {match_error}")
+                    print(
+                        f"Error processing match {match_data.get('id', 'unknown')}: {match_error}"
+                    )
                     continue
-            
+
             return {
                 "message": f"Processed {processed_count} matches",
                 "processedCount": processed_count,
-                "results": results
+                "results": results,
             }
 
         except Exception as e:

@@ -508,7 +508,9 @@ class FirestoreHelper:
     def get_matches_by_match_day(self, match_day: int) -> List[Dict[str, Any]]:
         """Get matches by match day"""
         try:
-            matches_ref = self.db.collection("matches").where("matchDay", "==", match_day)
+            matches_ref = self.db.collection("matches").where(
+                "matchDay", "==", match_day
+            )
             docs = matches_ref.stream()
 
             matches = []
@@ -522,7 +524,9 @@ class FirestoreHelper:
             print(f"Error getting matches by match day: {e}")
             return []
 
-    def get_scheduled_matches_up_to_day(self, max_match_day: int) -> List[Dict[str, Any]]:
+    def get_scheduled_matches_up_to_day(
+        self, max_match_day: int
+    ) -> List[Dict[str, Any]]:
         """Get scheduled matches up to a specific match day"""
         try:
             matches_ref = (
@@ -543,15 +547,17 @@ class FirestoreHelper:
             print(f"Error getting scheduled matches up to day: {e}")
             return []
 
-    def update_match_status(self, match_id: str, status: str, result: Optional[Dict[str, Any]] = None) -> bool:
+    def update_match_status(
+        self, match_id: str, status: str, result: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """Update match status and result"""
         try:
             match_ref = self.db.collection("matches").document(match_id)
             update_data = {"status": status, "updatedAt": datetime.now().isoformat()}
-            
+
             if result:
                 update_data["result"] = result
-                
+
             match_ref.update(update_data)
             return True
         except Exception as e:

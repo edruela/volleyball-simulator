@@ -101,7 +101,7 @@ class SeasonManager:
             competitions_created += len(continental_competitions)
 
             self._schedule_matches_for_season(season_id, participating_countries)
-            
+
             return SeasonCreationResult(
                 season_id=season_id,
                 competitions_created=competitions_created,
@@ -120,16 +120,20 @@ class SeasonManager:
                 message=f"Error creating season: {str(e)}",
             )
 
-    def _schedule_matches_for_season(self, season_id: str, participating_countries: List[str]):
+    def _schedule_matches_for_season(
+        self, season_id: str, participating_countries: List[str]
+    ):
         """Schedule matches for all competitions in the season"""
         try:
             competitions = self.firestore_helper.get_all_competitions()
-            season_competitions = [c for c in competitions if c.get("seasonId") == season_id]
-            
+            season_competitions = [
+                c for c in competitions if c.get("seasonId") == season_id
+            ]
+
             for competition in season_competitions:
                 if competition.get("type") == "domestic_league":
                     self._schedule_league_matches(competition, season_id)
-                    
+
         except Exception as e:
             print(f"Error scheduling matches for season: {e}")
 
@@ -139,26 +143,26 @@ class SeasonManager:
             participants = competition.get("participants", [])
             if len(participants) < 2:
                 return
-                
+
             club_ids = [p["clubId"] for p in participants]
             competition_id = competition["id"]
-            
+
             match_day = 1
             matches_per_round = len(club_ids) // 2
             total_rounds = (len(club_ids) - 1) * 2
-            
+
             for round_num in range(total_rounds):
                 for match_num in range(matches_per_round):
                     home_idx = match_num
                     away_idx = len(club_ids) - 1 - match_num
-                    
+
                     if round_num % 2 == 0:
                         home_club_id = club_ids[home_idx]
                         away_club_id = club_ids[away_idx]
                     else:
                         home_club_id = club_ids[away_idx]
                         away_club_id = club_ids[home_idx]
-                    
+
                     if home_club_id != away_club_id:
                         match_data = {
                             "homeClubId": home_club_id,
@@ -167,14 +171,14 @@ class SeasonManager:
                             "seasonId": season_id,
                             "matchDay": match_day,
                             "scheduledDate": datetime.now().isoformat(),
-                            "status": "scheduled"
+                            "status": "scheduled",
                         }
-                        
+
                         self.firestore_helper.save_scheduled_match(match_data)
-                
+
                 club_ids = [club_ids[0]] + [club_ids[-1]] + club_ids[1:-1]
                 match_day += 1
-                
+
         except Exception as e:
             print(f"Error scheduling league matches: {e}")
 
