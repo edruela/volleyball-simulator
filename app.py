@@ -9,7 +9,7 @@ import sys
 import logging
 import traceback
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, Type
 from flask import Flask, request, jsonify, g
 from flask_restx import Api, Resource, fields  # type: ignore
 from flask_cors import CORS
@@ -48,21 +48,21 @@ def setup_logging():
 logger = setup_logging()
 
 # Import application modules with error handling
+VolleyballSimulator: Optional[Type] = None
 try:
     from game_engine.match_simulation import VolleyballSimulator
 
     logger.info("Successfully imported VolleyballSimulator")
 except ImportError as e:
     logger.error(f"Failed to import VolleyballSimulator: {e}")
-    VolleyballSimulator = None
 
+FirestoreHelper: Optional[Type] = None
 try:
     from utils.firestore_helpers import FirestoreHelper
 
     logger.info("Successfully imported FirestoreHelper")
 except ImportError as e:
     logger.error(f"Failed to import FirestoreHelper: {e}")
-    FirestoreHelper = None
 
 try:
     from utils.auth import require_auth
@@ -330,7 +330,7 @@ db = initialize_firestore_with_retry()
 
 # Initialize Firestore helper
 firestore_helper = None
-if db and FirestoreHelper:
+if db and FirestoreHelper is not None:
     try:
         firestore_helper = FirestoreHelper(db)
         logger.info("FirestoreHelper initialized successfully")
@@ -340,7 +340,7 @@ if db and FirestoreHelper:
 
 # Initialize volleyball simulator
 volleyball_sim = None
-if VolleyballSimulator:
+if VolleyballSimulator is not None:
     try:
         volleyball_sim = VolleyballSimulator()
         service_status.simulator_available = True
@@ -432,7 +432,9 @@ def safe_service_access(service_name: str, service_obj, fallback_response):
 
 
 # Input validation utilities
-def validate_json_input(required_fields: list, optional_fields: dict = None) -> tuple:
+def validate_json_input(
+    required_fields: list, optional_fields: Optional[dict] = None
+) -> tuple:
     """Validate JSON input with detailed error reporting"""
     request_json = request.get_json(silent=True)
     if not request_json:
@@ -1428,7 +1430,7 @@ class ReadinessCheck(Resource):
 
 
 @api.route("/status")
-class ServiceStatus(Resource):
+class ServiceStatusEndpoint(Resource):
     @api.response(200, "Service status")
     def get(self):
         """Detailed service status for debugging"""
