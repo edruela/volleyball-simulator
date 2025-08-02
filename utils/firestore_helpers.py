@@ -3,6 +3,7 @@ Firestore database helper functions
 """
 
 from typing import Dict, List, Optional, Any
+from datetime import datetime
 from google.cloud import firestore  # type: ignore
 from models.club import Club
 from models.player import generate_random_player, Player
@@ -358,8 +359,8 @@ class FirestoreHelper:
             print(f"Error creating sample data: {e}")
             raise
 
-    def create_season(self, season) -> bool:
-        """Create a new season in Firestore"""
+    def create_season_object(self, season) -> bool:
+        """Create a new season object in Firestore"""
         try:
             season_ref = self.db.collection("seasons").document(season.id)
             season_ref.set(season.to_dict())
@@ -368,8 +369,8 @@ class FirestoreHelper:
             print(f"Error creating season: {e}")
             return False
 
-    def create_competition(self, competition) -> bool:
-        """Create a new competition in Firestore"""
+    def create_competition_object(self, competition) -> bool:
+        """Create a new competition object in Firestore"""
         try:
             competition_ref = self.db.collection("competitions").document(
                 competition.id
@@ -401,3 +402,206 @@ class FirestoreHelper:
         except Exception as e:
             print(f"Error getting clubs by country and tier: {e}")
             return []
+
+    def get_all_clubs(self) -> List[Dict[str, Any]]:
+        """Get all clubs"""
+        try:
+            clubs_ref = self.db.collection("clubs")
+            docs = clubs_ref.stream()
+
+            clubs = []
+            for doc in docs:
+                club_data = doc.to_dict()
+                club_data["id"] = doc.id
+                clubs.append(club_data)
+
+            return clubs
+        except Exception as e:
+            print(f"Error getting all clubs: {e}")
+            return []
+
+    def get_all_players(self) -> List[Dict[str, Any]]:
+        """Get all players"""
+        try:
+            players_ref = self.db.collection("players")
+            docs = players_ref.stream()
+
+            players = []
+            for doc in docs:
+                player_data = doc.to_dict()
+                player_data["id"] = doc.id
+                players.append(player_data)
+
+            return players
+        except Exception as e:
+            print(f"Error getting all players: {e}")
+            return []
+
+    def get_all_matches(self) -> List[Dict[str, Any]]:
+        """Get all matches"""
+        try:
+            matches_ref = self.db.collection("matches")
+            docs = matches_ref.stream()
+
+            matches = []
+            for doc in docs:
+                match_data = doc.to_dict()
+                match_data["id"] = doc.id
+                matches.append(match_data)
+
+            return matches
+        except Exception as e:
+            print(f"Error getting all matches: {e}")
+            return []
+
+    def get_all_competitions(self) -> List[Dict[str, Any]]:
+        """Get all competitions"""
+        try:
+            competitions_ref = self.db.collection("competitions")
+            docs = competitions_ref.stream()
+
+            competitions = []
+            for doc in docs:
+                competition_data = doc.to_dict()
+                competition_data["id"] = doc.id
+                competitions.append(competition_data)
+
+            return competitions
+        except Exception as e:
+            print(f"Error getting all competitions: {e}")
+            return []
+
+    def get_all_seasons(self) -> List[Dict[str, Any]]:
+        """Get all seasons"""
+        try:
+            seasons_ref = self.db.collection("seasons")
+            docs = seasons_ref.stream()
+
+            seasons = []
+            for doc in docs:
+                season_data = doc.to_dict()
+                season_data["id"] = doc.id
+                seasons.append(season_data)
+
+            return seasons
+        except Exception as e:
+            print(f"Error getting all seasons: {e}")
+            return []
+
+    def get_matches_by_status(self, status: str) -> List[Dict[str, Any]]:
+        """Get matches by status"""
+        try:
+            matches_ref = self.db.collection("matches").where("status", "==", status)
+            docs = matches_ref.stream()
+
+            matches = []
+            for doc in docs:
+                match_data = doc.to_dict()
+                match_data["id"] = doc.id
+                matches.append(match_data)
+
+            return matches
+        except Exception as e:
+            print(f"Error getting matches by status: {e}")
+            return []
+
+    def get_matches_by_match_day(self, match_day: int) -> List[Dict[str, Any]]:
+        """Get matches by match day"""
+        try:
+            matches_ref = self.db.collection("matches").where("matchDay", "==", match_day)
+            docs = matches_ref.stream()
+
+            matches = []
+            for doc in docs:
+                match_data = doc.to_dict()
+                match_data["id"] = doc.id
+                matches.append(match_data)
+
+            return matches
+        except Exception as e:
+            print(f"Error getting matches by match day: {e}")
+            return []
+
+    def get_scheduled_matches_up_to_day(self, max_match_day: int) -> List[Dict[str, Any]]:
+        """Get scheduled matches up to a specific match day"""
+        try:
+            matches_ref = (
+                self.db.collection("matches")
+                .where("status", "==", "scheduled")
+                .where("matchDay", "<=", max_match_day)
+            )
+            docs = matches_ref.stream()
+
+            matches = []
+            for doc in docs:
+                match_data = doc.to_dict()
+                match_data["id"] = doc.id
+                matches.append(match_data)
+
+            return matches
+        except Exception as e:
+            print(f"Error getting scheduled matches up to day: {e}")
+            return []
+
+    def update_match_status(self, match_id: str, status: str, result: Optional[Dict[str, Any]] = None) -> bool:
+        """Update match status and result"""
+        try:
+            match_ref = self.db.collection("matches").document(match_id)
+            update_data = {"status": status, "updatedAt": datetime.now().isoformat()}
+            
+            if result:
+                update_data["result"] = result
+                
+            match_ref.update(update_data)
+            return True
+        except Exception as e:
+            print(f"Error updating match status: {e}")
+            return False
+
+    def save_scheduled_match(self, match_data: Dict[str, Any]) -> str:
+        """Save a scheduled match to Firestore"""
+        try:
+            match_id = str(uuid.uuid4())
+            match_data["id"] = match_id
+            match_data["createdAt"] = datetime.now().isoformat()
+            match_data["updatedAt"] = datetime.now().isoformat()
+
+            doc_ref = self.db.collection("matches").document(match_id)
+            doc_ref.set(match_data)
+
+            return match_id
+        except Exception as e:
+            print(f"Error saving scheduled match: {e}")
+            raise
+
+    def create_competition(self, competition_data: Dict[str, Any]) -> bool:
+        """Create a new competition"""
+        try:
+            competition_id = competition_data.get("id", str(uuid.uuid4()))
+            competition_data["id"] = competition_id
+            competition_data["createdAt"] = datetime.now().isoformat()
+            competition_data["updatedAt"] = datetime.now().isoformat()
+
+            doc_ref = self.db.collection("competitions").document(competition_id)
+            doc_ref.set(competition_data)
+
+            return True
+        except Exception as e:
+            print(f"Error creating competition: {e}")
+            return False
+
+    def create_season(self, season_data: Dict[str, Any]) -> bool:
+        """Create a new season"""
+        try:
+            season_id = season_data.get("id", str(uuid.uuid4()))
+            season_data["id"] = season_id
+            season_data["createdAt"] = datetime.now().isoformat()
+            season_data["updatedAt"] = datetime.now().isoformat()
+
+            doc_ref = self.db.collection("seasons").document(season_id)
+            doc_ref.set(season_data)
+
+            return True
+        except Exception as e:
+            print(f"Error creating season: {e}")
+            return False
