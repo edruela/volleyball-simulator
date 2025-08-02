@@ -9,7 +9,7 @@ import sys
 import logging
 import traceback
 import time
-from typing import Optional, Dict, Any, Type
+from typing import Optional, Dict, Any, Type, Union
 from flask import Flask, request, jsonify, g
 from flask_restx import Api, Resource, fields  # type: ignore
 from flask_cors import CORS
@@ -176,6 +176,8 @@ match_ns = api.namespace("matches", description="Match operations")
 club_ns = api.namespace("clubs", description="Club operations")
 league_ns = api.namespace("leagues", description="League operations")
 player_ns = api.namespace("players", description="Player operations")
+competition_ns = api.namespace("competitions", description="Competition operations")
+season_ns = api.namespace("seasons", description="Season operations")
 
 # Define models for request/response documentation
 tactics_model = api.model(
@@ -738,6 +740,124 @@ class MatchSimulation(Resource):
             }, 500
 
 
+@match_ns.route("/list")
+class ListMatches(Resource):
+    @require_auth
+    def get(self):
+        """Get all matches"""
+        try:
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            matches = firestore_helper.get_all_matches()
+            return {"matches": matches}
+
+        except Exception as e:
+            return {"error": f"Failed to get matches: {str(e)}"}, 500
+
+
+@match_ns.route("/process-scheduled")
+class ProcessScheduledMatches(Resource):
+    @require_auth
+    def post(self):
+        """Process scheduled matches for the current match day"""
+        try:
+            data = request.get_json() or {}
+            current_match_day = data.get("currentMatchDay", 1)
+
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            scheduled_matches = firestore_helper.get_scheduled_matches_up_to_day(
+                current_match_day
+            )
+
+            if not scheduled_matches:
+                return {
+                    "message": "No scheduled matches to process",
+                    "processedCount": 0,
+                }
+
+            processed_count = 0
+            results = []
+
+            for match_data in scheduled_matches:
+                try:
+                    home_club_id = match_data["homeClubId"]
+                    away_club_id = match_data["awayClubId"]
+                    match_id = match_data["id"]
+
+                    home_club = firestore_helper.get_club(home_club_id)
+                    away_club = firestore_helper.get_club(away_club_id)
+
+                    if not home_club or not away_club:
+                        print(f"Skipping match {match_id}: Club not found")
+                        continue
+
+                    home_players = firestore_helper.get_club_players(home_club_id)
+                    away_players = firestore_helper.get_club_players(away_club_id)
+
+                    if len(home_players) < 7 or len(away_players) < 7:
+                        print(f"Skipping match {match_id}: Not enough players")
+                        continue
+
+                    home_team = {"club": home_club, "players": home_players[:12]}
+
+                    away_team = {"club": away_club, "players": away_players[:12]}
+
+                    tactics = {
+                        "home": match_data.get(
+                            "homeTactics",
+                            {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
+                        ),
+                        "away": match_data.get(
+                            "awayTactics",
+                            {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
+                        ),
+                    }
+
+                    from game_engine.match_simulation import VolleyballSimulator
+
+                    volleyball_sim = VolleyballSimulator()
+                    match_result = volleyball_sim.simulate_match(
+                        home_team, away_team, tactics
+                    )
+
+                    firestore_helper.update_match_status(
+                        match_id, "completed", match_result
+                    )
+
+                    results.append(
+                        {
+                            "matchId": match_id,
+                            "homeClub": home_club["name"],
+                            "awayClub": away_club["name"],
+                            "result": f"{match_result['homeSets']}-{match_result['awaySets']}",
+                        }
+                    )
+
+                    processed_count += 1
+
+                except Exception as match_error:
+                    print(
+                        f"Error processing match {match_data.get('id', 'unknown')}: {match_error}"
+                    )
+                    continue
+
+            return {
+                "message": f"Processed {processed_count} matches",
+                "processedCount": processed_count,
+                "results": results,
+            }
+
+        except Exception as e:
+            return {"error": f"Failed to process scheduled matches: {str(e)}"}, 500
+
+
 @club_ns.route("")
 class ClubOperations(Resource):
     @club_ns.param("clubId", "The club identifier")
@@ -809,6 +929,24 @@ class ClubOperations(Resource):
 
         except Exception as e:
             return {"error": f"Failed to create club: {str(e)}"}, 500
+
+
+@club_ns.route("/list")
+class ListClubs(Resource):
+    @require_auth
+    def get(self):
+        """Get all clubs"""
+        try:
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            clubs = firestore_helper.get_all_clubs()
+            return {"clubs": clubs}
+
+        except Exception as e:
+            return {"error": f"Failed to get clubs: {str(e)}"}, 500
 
 
 @league_ns.route("/standings")
@@ -1154,6 +1292,60 @@ class PlayerTransferAssessment(Resource):
 
         except Exception as e:
             return {"error": f"Internal server error: {str(e)}"}, 500
+
+
+@player_ns.route("/list")
+class ListPlayers(Resource):
+    @require_auth
+    def get(self):
+        """Get all players"""
+        try:
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            players = firestore_helper.get_all_players()
+            return {"players": players}
+
+        except Exception as e:
+            return {"error": f"Failed to get players: {str(e)}"}, 500
+
+
+@competition_ns.route("/list")
+class ListCompetitions(Resource):
+    @require_auth
+    def get(self):
+        """Get all competitions"""
+        try:
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            competitions = firestore_helper.get_all_competitions()
+            return {"competitions": competitions}
+
+        except Exception as e:
+            return {"error": f"Failed to get competitions: {str(e)}"}, 500
+
+
+@season_ns.route("/list")
+class ListSeasons(Resource):
+    @require_auth
+    def get(self):
+        """Get all seasons"""
+        try:
+            if not firestore_helper:
+                return {
+                    "error": "Service unavailable - running in local testing mode"
+                }, 503
+
+            seasons = firestore_helper.get_all_seasons()
+            return {"seasons": seasons}
+
+        except Exception as e:
+            return {"error": f"Failed to get seasons: {str(e)}"}, 500
 
 
 @api.route("/health")
