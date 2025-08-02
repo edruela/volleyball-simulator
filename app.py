@@ -20,11 +20,12 @@ from firebase_admin import credentials
 import json
 import base64
 
+
 # Configure structured logging for Cloud Run
 def setup_logging():
     """Configure structured logging for Cloud Run deployment"""
     # Use Cloud Logging in production, stdout in development
-    if os.getenv('GOOGLE_CLOUD_PROJECT'):
+    if os.getenv("GOOGLE_CLOUD_PROJECT"):
         try:
             client = LoggingClient()
             client.setup_logging()
@@ -32,22 +33,24 @@ def setup_logging():
             # Fallback to basic logging if Cloud Logging fails
             logging.basicConfig(
                 level=logging.INFO,
-                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             )
             logging.warning(f"Failed to setup Cloud Logging, using basic logging: {e}")
     else:
         logging.basicConfig(
             level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
-    
+
     return logging.getLogger(__name__)
+
 
 logger = setup_logging()
 
 # Import application modules with error handling
 try:
     from game_engine.match_simulation import VolleyballSimulator
+
     logger.info("Successfully imported VolleyballSimulator")
 except ImportError as e:
     logger.error(f"Failed to import VolleyballSimulator: {e}")
@@ -55,6 +58,7 @@ except ImportError as e:
 
 try:
     from utils.firestore_helpers import FirestoreHelper
+
     logger.info("Successfully imported FirestoreHelper")
 except ImportError as e:
     logger.error(f"Failed to import FirestoreHelper: {e}")
@@ -62,32 +66,35 @@ except ImportError as e:
 
 try:
     from utils.auth import require_auth
+
     logger.info("Successfully imported auth utilities")
 except ImportError as e:
     logger.error(f"Failed to import auth utilities: {e}")
+
     # Create a dummy auth decorator if import fails
     def require_auth(f):
         return f
+
 
 # Environment validation
 def validate_environment():
     """Validate required environment variables and configuration"""
     required_vars = []
     optional_vars = {
-        'GOOGLE_CLOUD_PROJECT': 'Cloud project ID for logging and Firestore',
-        'FIREBASE_ADMIN_KEY': 'Firebase admin service account key (base64 encoded)',
-        'PORT': 'Server port (defaults to 8080)',
-        'SKIP_AUTH': 'Skip authentication for development (defaults to false)'
+        "GOOGLE_CLOUD_PROJECT": "Cloud project ID for logging and Firestore",
+        "FIREBASE_ADMIN_KEY": "Firebase admin service account key (base64 encoded)",
+        "PORT": "Server port (defaults to 8080)",
+        "SKIP_AUTH": "Skip authentication for development (defaults to false)",
     }
-    
+
     missing_critical = []
     warnings = []
-    
+
     # Check for Firebase credentials if authentication is required
-    if os.getenv('SKIP_AUTH', 'false').lower() != 'true':
-        if not os.getenv('FIREBASE_ADMIN_KEY'):
-            missing_critical.append('FIREBASE_ADMIN_KEY (required for authentication)')
-    
+    if os.getenv("SKIP_AUTH", "false").lower() != "true":
+        if not os.getenv("FIREBASE_ADMIN_KEY"):
+            missing_critical.append("FIREBASE_ADMIN_KEY (required for authentication)")
+
     # Log environment status
     for var, description in optional_vars.items():
         value = os.getenv(var)
@@ -95,19 +102,20 @@ def validate_environment():
             logger.info(f"Environment variable {var}: configured")
         else:
             warnings.append(f"{var}: not set - {description}")
-    
+
     if warnings:
         logger.warning("Optional environment variables not set:")
         for warning in warnings:
             logger.warning(f"  - {warning}")
-    
+
     if missing_critical:
         logger.error("Critical environment variables missing:")
         for missing in missing_critical:
             logger.error(f"  - {missing}")
         return False
-    
+
     return True
+
 
 # Service status tracking
 class ServiceStatus:
@@ -116,14 +124,17 @@ class ServiceStatus:
         self.firestore_connected = False
         self.simulator_available = False
         self.initialization_errors = []
-    
+
     def add_error(self, service: str, error: str):
         self.initialization_errors.append(f"{service}: {error}")
         logger.error(f"Service {service} failed: {error}")
-    
+
     def is_healthy(self):
-        return (self.firebase_initialized or os.getenv('SKIP_AUTH', 'false').lower() == 'true') and \
-               (self.firestore_connected and self.simulator_available)
+        return (
+            self.firebase_initialized
+            or os.getenv("SKIP_AUTH", "false").lower() == "true"
+        ) and (self.firestore_connected and self.simulator_available)
+
 
 service_status = ServiceStatus()
 
@@ -131,21 +142,25 @@ service_status = ServiceStatus()
 try:
     app = Flask(__name__)
     CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"])
-    
+
     # Configure app settings
-    app.config['JSON_SORT_KEYS'] = False
-    app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
-    
+    app.config["JSON_SORT_KEYS"] = False
+    app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
+
     # Initialize API with error handling
     api = Api(
         app,
         version="1.0",
         title="Volleyball Simulator API",
         description="A volleyball simulation and management API with enhanced error handling",
-        doc='/swagger-ui' if os.getenv('ENVIRONMENT', 'production') != 'production' else False,
-        catch_all_404s=True
+        doc=(
+            "/swagger-ui"
+            if os.getenv("ENVIRONMENT", "production") != "production"
+            else False
+        ),
+        catch_all_404s=True,
     )
-    
+
     logger.info("Flask application initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize Flask application: {e}")
@@ -211,94 +226,99 @@ transfer_assessment_request = api.model(
     },
 )
 
+
 # Firebase initialization with retry logic
 def initialize_firebase_with_retry(max_retries: int = 3) -> bool:
     """Initialize Firebase with retry logic and comprehensive error handling"""
-    if os.getenv('SKIP_AUTH', 'false').lower() == 'true':
+    if os.getenv("SKIP_AUTH", "false").lower() == "true":
         logger.info("Authentication disabled via SKIP_AUTH environment variable")
         service_status.firebase_initialized = True
         return True
-    
+
     if firebase_admin._apps:
         logger.info("Firebase already initialized")
         service_status.firebase_initialized = True
         return True
-    
+
     firebase_key = os.getenv("FIREBASE_ADMIN_KEY")
     if not firebase_key:
         error_msg = "FIREBASE_ADMIN_KEY environment variable not set"
         service_status.add_error("Firebase", error_msg)
         return False
-    
+
     for attempt in range(max_retries):
         try:
             logger.info(f"Initializing Firebase (attempt {attempt + 1}/{max_retries})")
-            
+
             # Decode base64 string to JSON
             decoded_key = base64.b64decode(firebase_key).decode("utf-8")
             cred_dict = json.loads(decoded_key)
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
-            
+
             logger.info("Firebase initialized successfully")
             service_status.firebase_initialized = True
             return True
-            
+
         except json.JSONDecodeError as e:
             error_msg = f"Invalid FIREBASE_ADMIN_KEY format - must be valid base64 encoded JSON: {e}"
             service_status.add_error("Firebase", error_msg)
             return False  # Don't retry for invalid format
-            
+
         except ValueError as e:
             error_msg = f"Invalid Firebase credentials: {e}"
             service_status.add_error("Firebase", error_msg)
             return False  # Don't retry for invalid credentials
-            
+
         except Exception as e:
             error_msg = f"Firebase initialization failed (attempt {attempt + 1}): {e}"
             logger.warning(error_msg)
             if attempt == max_retries - 1:
                 service_status.add_error("Firebase", error_msg)
                 return False
-            time.sleep(2 ** attempt)  # Exponential backoff
-    
+            time.sleep(2**attempt)  # Exponential backoff
+
     return False
+
 
 # Firestore initialization with retry logic
 def initialize_firestore_with_retry(max_retries: int = 3) -> Optional[firestore.Client]:
     """Initialize Firestore with retry logic and comprehensive error handling"""
-    
+
     for attempt in range(max_retries):
         try:
             logger.info(f"Initializing Firestore (attempt {attempt + 1}/{max_retries})")
-            
+
             # Try to create Firestore client
             db = firestore.Client()
-            
+
             # Test connection with a simple operation
-            test_doc_ref = db.collection('_health_check').document('test')
+            test_doc_ref = db.collection("_health_check").document("test")
             test_doc_ref.get()  # This will raise an exception if connection fails
-            
+
             logger.info("Firestore connected successfully")
             service_status.firestore_connected = True
             return db
-            
+
         except Exception as e:
             error_msg = f"Firestore initialization failed (attempt {attempt + 1}): {e}"
             logger.warning(error_msg)
             if attempt == max_retries - 1:
                 service_status.add_error("Firestore", error_msg)
                 return None
-            time.sleep(2 ** attempt)  # Exponential backoff
-    
+            time.sleep(2**attempt)  # Exponential backoff
+
     return None
+
 
 # Initialize services with comprehensive error handling
 logger.info("Starting service initialization...")
 
 # Validate environment first
 if not validate_environment():
-    logger.error("Environment validation failed, but continuing with limited functionality")
+    logger.error(
+        "Environment validation failed, but continuing with limited functionality"
+    )
 
 # Initialize Firebase
 firebase_initialized = initialize_firebase_with_retry()
@@ -336,46 +356,69 @@ else:
         logger.warning(f"  - {error}")
     logger.warning("Application will run with limited functionality")
 
+
 # Global error handlers
 @app.errorhandler(404)
 def not_found(error):
     logger.warning(f"404 error: {request.url}")
     return jsonify({"error": "Resource not found", "path": request.path}), 404
 
+
 @app.errorhandler(405)
 def method_not_allowed(error):
     logger.warning(f"405 error: {request.method} {request.url}")
-    return jsonify({"error": "Method not allowed", "method": request.method, "path": request.path}), 405
+    return (
+        jsonify(
+            {
+                "error": "Method not allowed",
+                "method": request.method,
+                "path": request.path,
+            }
+        ),
+        405,
+    )
+
 
 @app.errorhandler(500)
 def internal_error(error):
     logger.error(f"500 error: {error}")
     logger.error(f"Request: {request.method} {request.url}")
     logger.error(f"Traceback: {traceback.format_exc()}")
-    return jsonify({
-        "error": "Internal server error",
-        "message": "An unexpected error occurred. Please try again later.",
-        "request_id": getattr(g, 'request_id', 'unknown')
-    }), 500
+    return (
+        jsonify(
+            {
+                "error": "Internal server error",
+                "message": "An unexpected error occurred. Please try again later.",
+                "request_id": getattr(g, "request_id", "unknown"),
+            }
+        ),
+        500,
+    )
+
 
 @app.before_request
 def before_request():
     """Log request details and add request ID for tracking"""
     import uuid
+
     g.request_id = str(uuid.uuid4())[:8]
     g.start_time = time.time()
-    
+
     # Log request details (but not for health checks to reduce noise)
-    if not request.path.endswith('/health'):
+    if not request.path.endswith("/health"):
         logger.info(f"Request {g.request_id}: {request.method} {request.path}")
+
 
 @app.after_request
 def after_request(response):
     """Log response details and timing"""
-    if hasattr(g, 'start_time') and not request.path.endswith('/health'):
+    if hasattr(g, "start_time") and not request.path.endswith("/health"):
         duration = time.time() - g.start_time
-        logger.info(f"Response {getattr(g, 'request_id', 'unknown')}: {response.status_code} ({duration:.3f}s)")
+        logger.info(
+            f"Response {getattr(g, 'request_id', 'unknown')}: {response.status_code} ({duration:.3f}s)"
+        )
     return response
+
 
 # Utility function for safe service access
 def safe_service_access(service_name: str, service_obj, fallback_response):
@@ -391,18 +434,27 @@ def validate_json_input(required_fields: list, optional_fields: dict = None) -> 
     """Validate JSON input with detailed error reporting"""
     request_json = request.get_json(silent=True)
     if not request_json:
-        return None, {"error": "No JSON data provided", "details": "Request body must contain valid JSON"}, 400
-    
+        return (
+            None,
+            {
+                "error": "No JSON data provided",
+                "details": "Request body must contain valid JSON",
+            },
+            400,
+        )
+
     missing_fields = []
     invalid_fields = []
-    
+
     # Check required fields
     for field in required_fields:
         if field not in request_json:
             missing_fields.append(field)
-        elif not request_json[field] or (isinstance(request_json[field], str) and not request_json[field].strip()):
+        elif not request_json[field] or (
+            isinstance(request_json[field], str) and not request_json[field].strip()
+        ):
             invalid_fields.append(f"{field} (empty or whitespace)")
-    
+
     # Validate optional fields if provided
     if optional_fields:
         for field, validator in optional_fields.items():
@@ -412,21 +464,26 @@ def validate_json_input(required_fields: list, optional_fields: dict = None) -> 
                         invalid_fields.append(f"{field} (invalid format)")
                 except Exception:
                     invalid_fields.append(f"{field} (validation error)")
-    
+
     errors = []
     if missing_fields:
         errors.append(f"Missing required fields: {', '.join(missing_fields)}")
     if invalid_fields:
         errors.append(f"Invalid fields: {', '.join(invalid_fields)}")
-    
+
     if errors:
-        return None, {
-            "error": "Invalid request data",
-            "details": "; ".join(errors),
-            "required_fields": required_fields
-        }, 400
-    
+        return (
+            None,
+            {
+                "error": "Invalid request data",
+                "details": "; ".join(errors),
+                "required_fields": required_fields,
+            },
+            400,
+        )
+
     return request_json, None, None
+
 
 def safe_firestore_operation(operation_name: str, operation_func, *args, **kwargs):
     """Safely execute Firestore operations with error handling"""
@@ -441,6 +498,7 @@ def safe_firestore_operation(operation_name: str, operation_func, *args, **kwarg
         logger.error(f"Traceback: {traceback.format_exc()}")
         return None, error_msg
 
+
 @match_ns.route("/simulate")
 class MatchSimulation(Resource):
     @match_ns.expect(match_request)
@@ -453,31 +511,40 @@ class MatchSimulation(Resource):
     @require_auth
     def post(self):
         """Simulate a volleyball match with comprehensive error handling"""
-        request_id = getattr(g, 'request_id', 'unknown')
+        request_id = getattr(g, "request_id", "unknown")
         logger.info(f"Match simulation request {request_id} started")
-        
+
         try:
             # Validate input
             request_json, error_response, status_code = validate_json_input(
                 required_fields=["homeClubId", "awayClubId"],
-                optional_fields={
-                    "tactics": lambda x: isinstance(x, dict)
-                }
+                optional_fields={"tactics": lambda x: isinstance(x, dict)},
             )
-            
+
             if error_response:
-                logger.warning(f"Request {request_id}: Input validation failed - {error_response}")
+                logger.warning(
+                    f"Request {request_id}: Input validation failed - {error_response}"
+                )
                 return error_response, status_code
 
             home_club_id = request_json["homeClubId"]
             away_club_id = request_json["awayClubId"]
-            
+
             # Validate club IDs format (basic UUID check)
             import re
-            uuid_pattern = re.compile(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$', re.IGNORECASE)
-            if not uuid_pattern.match(home_club_id) or not uuid_pattern.match(away_club_id):
+
+            uuid_pattern = re.compile(
+                r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+                re.IGNORECASE,
+            )
+            if not uuid_pattern.match(home_club_id) or not uuid_pattern.match(
+                away_club_id
+            ):
                 logger.warning(f"Request {request_id}: Invalid club ID format")
-                return {"error": "Invalid club ID format", "details": "Club IDs must be valid UUIDs"}, 400
+                return {
+                    "error": "Invalid club ID format",
+                    "details": "Club IDs must be valid UUIDs",
+                }, 400
 
             # Check service availability
             if not firestore_helper:
@@ -485,15 +552,15 @@ class MatchSimulation(Resource):
                 return {
                     "error": "Service unavailable",
                     "details": "Database service is not available",
-                    "retry_after": 30
+                    "retry_after": 30,
                 }, 503
-                
+
             if not volleyball_sim:
                 logger.error(f"Request {request_id}: Volleyball simulator unavailable")
                 return {
-                    "error": "Service unavailable", 
+                    "error": "Service unavailable",
                     "details": "Match simulation service is not available",
-                    "retry_after": 30
+                    "retry_after": 30,
                 }, 503
 
             # Fetch club data with error handling
@@ -501,23 +568,37 @@ class MatchSimulation(Resource):
                 "get_home_club", firestore_helper.get_club, home_club_id
             )
             if error:
-                logger.error(f"Request {request_id}: Failed to fetch home club - {error}")
-                return {"error": "Database error", "details": "Failed to retrieve home club data"}, 500
+                logger.error(
+                    f"Request {request_id}: Failed to fetch home club - {error}"
+                )
+                return {
+                    "error": "Database error",
+                    "details": "Failed to retrieve home club data",
+                }, 500
 
             away_club_data, error = safe_firestore_operation(
                 "get_away_club", firestore_helper.get_club, away_club_id
             )
             if error:
-                logger.error(f"Request {request_id}: Failed to fetch away club - {error}")
-                return {"error": "Database error", "details": "Failed to retrieve away club data"}, 500
+                logger.error(
+                    f"Request {request_id}: Failed to fetch away club - {error}"
+                )
+                return {
+                    "error": "Database error",
+                    "details": "Failed to retrieve away club data",
+                }, 500
 
             # Check if clubs exist
             if not home_club_data:
-                logger.warning(f"Request {request_id}: Home club {home_club_id} not found")
+                logger.warning(
+                    f"Request {request_id}: Home club {home_club_id} not found"
+                )
                 return {"error": "Home club not found", "clubId": home_club_id}, 404
-                
+
             if not away_club_data:
-                logger.warning(f"Request {request_id}: Away club {away_club_id} not found")
+                logger.warning(
+                    f"Request {request_id}: Away club {away_club_id} not found"
+                )
                 return {"error": "Away club not found", "clubId": away_club_id}, 404
 
             # Fetch players with error handling
@@ -525,31 +606,45 @@ class MatchSimulation(Resource):
                 "get_home_players", firestore_helper.get_club_players, home_club_id
             )
             if error:
-                logger.error(f"Request {request_id}: Failed to fetch home players - {error}")
-                return {"error": "Database error", "details": "Failed to retrieve home team players"}, 500
+                logger.error(
+                    f"Request {request_id}: Failed to fetch home players - {error}"
+                )
+                return {
+                    "error": "Database error",
+                    "details": "Failed to retrieve home team players",
+                }, 500
 
             away_players, error = safe_firestore_operation(
                 "get_away_players", firestore_helper.get_club_players, away_club_id
             )
             if error:
-                logger.error(f"Request {request_id}: Failed to fetch away players - {error}")
-                return {"error": "Database error", "details": "Failed to retrieve away team players"}, 500
+                logger.error(
+                    f"Request {request_id}: Failed to fetch away players - {error}"
+                )
+                return {
+                    "error": "Database error",
+                    "details": "Failed to retrieve away team players",
+                }, 500
 
             # Check if teams have enough players
             if len(home_players) < 6:
-                logger.warning(f"Request {request_id}: Home team has insufficient players ({len(home_players)})")
+                logger.warning(
+                    f"Request {request_id}: Home team has insufficient players ({len(home_players)})"
+                )
                 return {
-                    "error": "Insufficient players", 
+                    "error": "Insufficient players",
                     "details": f"Home team needs at least 6 players, has {len(home_players)}",
-                    "clubId": home_club_id
+                    "clubId": home_club_id,
                 }, 400
-                
+
             if len(away_players) < 6:
-                logger.warning(f"Request {request_id}: Away team has insufficient players ({len(away_players)})")
+                logger.warning(
+                    f"Request {request_id}: Away team has insufficient players ({len(away_players)})"
+                )
                 return {
                     "error": "Insufficient players",
                     "details": f"Away team needs at least 6 players, has {len(away_players)}",
-                    "clubId": away_club_id
+                    "clubId": away_club_id,
                 }, 400
 
             # Prepare team data
@@ -571,7 +666,7 @@ class MatchSimulation(Resource):
                 "home": {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
                 "away": {"formation": "5-1", "intensity": 1.0, "style": "balanced"},
             }
-            
+
             # Merge with defaults
             for team in ["home", "away"]:
                 if team not in tactics:
@@ -584,15 +679,19 @@ class MatchSimulation(Resource):
             # Simulate match
             logger.info(f"Request {request_id}: Starting match simulation")
             try:
-                match_result = volleyball_sim.simulate_match(home_team, away_team, tactics)
+                match_result = volleyball_sim.simulate_match(
+                    home_team, away_team, tactics
+                )
                 logger.info(f"Request {request_id}: Match simulation completed")
             except Exception as e:
-                logger.error(f"Request {request_id}: Match simulation failed - {str(e)}")
+                logger.error(
+                    f"Request {request_id}: Match simulation failed - {str(e)}"
+                )
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return {
                     "error": "Simulation error",
                     "details": "Failed to simulate match",
-                    "retry_after": 5
+                    "retry_after": 5,
                 }, 500
 
             # Save match result
@@ -602,25 +701,33 @@ class MatchSimulation(Resource):
             if error:
                 logger.error(f"Request {request_id}: Failed to save match - {error}")
                 # Return simulation result even if save fails
-                logger.warning(f"Request {request_id}: Returning simulation result without saving")
-                return jsonify({
-                    **match_result,
-                    "warning": "Match simulated successfully but not saved to database",
-                    "matchId": None
-                })
+                logger.warning(
+                    f"Request {request_id}: Returning simulation result without saving"
+                )
+                return jsonify(
+                    {
+                        **match_result,
+                        "warning": "Match simulated successfully but not saved to database",
+                        "matchId": None,
+                    }
+                )
 
             match_result["matchId"] = match_id
-            logger.info(f"Request {request_id}: Match simulation completed successfully, saved as {match_id}")
-            
+            logger.info(
+                f"Request {request_id}: Match simulation completed successfully, saved as {match_id}"
+            )
+
             return jsonify(match_result)
 
         except Exception as e:
-            logger.error(f"Request {request_id}: Unexpected error in match simulation - {str(e)}")
+            logger.error(
+                f"Request {request_id}: Unexpected error in match simulation - {str(e)}"
+            )
             logger.error(f"Traceback: {traceback.format_exc()}")
             return {
                 "error": "Internal server error",
                 "details": "An unexpected error occurred during match simulation",
-                "request_id": request_id
+                "request_id": request_id,
             }, 500
 
 
@@ -1057,43 +1164,60 @@ class HealthCheck(Resource):
                 "environment": os.getenv("ENVIRONMENT", "unknown"),
                 "services": {
                     "firebase": {
-                        "status": "healthy" if service_status.firebase_initialized else "unhealthy",
-                        "required": os.getenv('SKIP_AUTH', 'false').lower() != 'true'
+                        "status": (
+                            "healthy"
+                            if service_status.firebase_initialized
+                            else "unhealthy"
+                        ),
+                        "required": os.getenv("SKIP_AUTH", "false").lower() != "true",
                     },
                     "firestore": {
-                        "status": "healthy" if service_status.firestore_connected else "unhealthy",
-                        "required": True
+                        "status": (
+                            "healthy"
+                            if service_status.firestore_connected
+                            else "unhealthy"
+                        ),
+                        "required": True,
                     },
                     "simulator": {
-                        "status": "healthy" if service_status.simulator_available else "unhealthy",
-                        "required": True
-                    }
+                        "status": (
+                            "healthy"
+                            if service_status.simulator_available
+                            else "unhealthy"
+                        ),
+                        "required": True,
+                    },
                 },
-                "initialization_errors": service_status.initialization_errors if service_status.initialization_errors else None
+                "initialization_errors": (
+                    service_status.initialization_errors
+                    if service_status.initialization_errors
+                    else None
+                ),
             }
-            
+
             # Check if all required services are healthy
             all_required_healthy = True
             for service_name, service_info in health_status["services"].items():
                 if service_info["required"] and service_info["status"] != "healthy":
                     all_required_healthy = False
                     break
-            
+
             if all_required_healthy:
                 health_status["status"] = "healthy"
                 return health_status, 200
             else:
                 health_status["status"] = "unhealthy"
                 return health_status, 503
-                
+
         except Exception as e:
             logger.error(f"Health check failed: {str(e)}")
             return {
                 "status": "error",
                 "service": "volleyball-simulator",
                 "timestamp": time.time(),
-                "error": f"Health check failed: {str(e)}"
+                "error": f"Health check failed: {str(e)}",
             }, 503
+
 
 @api.route("/ready")
 class ReadinessCheck(Resource):
@@ -1105,10 +1229,11 @@ class ReadinessCheck(Resource):
             return {"status": "ready", "timestamp": time.time()}, 200
         else:
             return {
-                "status": "not ready", 
+                "status": "not ready",
                 "timestamp": time.time(),
-                "details": "One or more required services are unavailable"
+                "details": "One or more required services are unavailable",
             }, 503
+
 
 @api.route("/status")
 class ServiceStatus(Resource):
@@ -1118,39 +1243,43 @@ class ServiceStatus(Resource):
         return {
             "service": "volleyball-simulator",
             "timestamp": time.time(),
-            "uptime": time.time() - app.config.get('START_TIME', time.time()),
+            "uptime": time.time() - app.config.get("START_TIME", time.time()),
             "environment": {
                 "python_version": sys.version,
                 "platform": sys.platform,
                 "google_cloud_project": os.getenv("GOOGLE_CLOUD_PROJECT"),
                 "port": os.getenv("PORT", "8080"),
-                "skip_auth": os.getenv("SKIP_AUTH", "false")
+                "skip_auth": os.getenv("SKIP_AUTH", "false"),
             },
             "services": {
                 "firebase_initialized": service_status.firebase_initialized,
-                "firestore_connected": service_status.firestore_connected, 
+                "firestore_connected": service_status.firestore_connected,
                 "simulator_available": service_status.simulator_available,
-                "errors": service_status.initialization_errors
+                "errors": service_status.initialization_errors,
             },
             "memory_usage": {
                 "available": True  # Could add psutil for detailed memory info
-            }
+            },
         }, 200
 
 
 # Record startup time for uptime tracking
-app.config['START_TIME'] = time.time()
+app.config["START_TIME"] = time.time()
 
 # Log final startup status
 logger.info(f"Volleyball Simulator API starting up...")
 logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'unknown')}")
 logger.info(f"Python version: {sys.version}")
-logger.info(f"Services status: Firebase={service_status.firebase_initialized}, "
-           f"Firestore={service_status.firestore_connected}, "
-           f"Simulator={service_status.simulator_available}")
+logger.info(
+    f"Services status: Firebase={service_status.firebase_initialized}, "
+    f"Firestore={service_status.firestore_connected}, "
+    f"Simulator={service_status.simulator_available}"
+)
 
 if service_status.initialization_errors:
-    logger.warning(f"Startup completed with {len(service_status.initialization_errors)} errors")
+    logger.warning(
+        f"Startup completed with {len(service_status.initialization_errors)} errors"
+    )
 else:
     logger.info("Startup completed successfully")
 
@@ -1158,10 +1287,10 @@ if __name__ == "__main__":
     try:
         port = int(os.environ.get("PORT", 8080))
         debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
-        
+
         logger.info(f"Starting Flask development server on port {port}")
         logger.info(f"Debug mode: {debug_mode}")
-        
+
         app.run(host="0.0.0.0", port=port, debug=debug_mode)
     except Exception as e:
         logger.error(f"Failed to start Flask application: {e}")
