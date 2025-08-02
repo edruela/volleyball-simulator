@@ -1,5 +1,6 @@
 # Core dependencies
 google-cloud-firestore>=2.13.1
+google-cloud-logging>=3.8.0
 Flask>=2.3.0
 gunicorn>=21.2.0
 numpy>=1.26.0
@@ -20,3 +21,4 @@ faker>=20.1.0
 # Firebase Authentication
 firebase-admin>=6.5.0
 flask-cors>=4.0.0
+google-cloud-logging>=3.12.0

@@ -187,9 +187,21 @@ class TestMatchEndpoints:
 
     def test_simulate_match_success(self, client, mock_firestore_helper):
         """Test successful match simulation"""
-        mock_home_club = {"id": "home_club", "name": "Home Team"}
-        mock_away_club = {"id": "away_club", "name": "Away Team"}
-        mock_players = [{"id": "p1", "position": "OH"}]
+        # Use valid UUIDs for club IDs
+        home_club_id = "550e8400-e29b-41d4-a716-446655440000"
+        away_club_id = "550e8400-e29b-41d4-a716-446655440001"
+
+        mock_home_club = {"id": home_club_id, "name": "Home Team"}
+        mock_away_club = {"id": away_club_id, "name": "Away Team"}
+        # Create enough players for a match (minimum 6 required)
+        mock_players = [
+            {"id": "p1", "position": "OH"},
+            {"id": "p2", "position": "MB"},
+            {"id": "p3", "position": "OPP"},
+            {"id": "p4", "position": "S"},
+            {"id": "p5", "position": "L"},
+            {"id": "p6", "position": "OH"},
+        ]
 
         mock_firestore_helper.get_club.side_effect = [mock_home_club, mock_away_club]
         mock_firestore_helper.get_club_players.return_value = mock_players
@@ -197,13 +209,13 @@ class TestMatchEndpoints:
 
         with patch("app.volleyball_sim") as mock_sim:
             mock_result = {
-                "homeClubId": "home_club",
-                "awayClubId": "away_club",
+                "homeClubId": home_club_id,
+                "awayClubId": away_club_id,
                 "result": {"winner": "home", "homeSets": 3, "awaySets": 1},
             }
             mock_sim.simulate_match.return_value = mock_result
 
-            match_data = {"homeClubId": "home_club", "awayClubId": "away_club"}
+            match_data = {"homeClubId": home_club_id, "awayClubId": away_club_id}
 
             response = client.post(
                 "/matches/simulate",
@@ -218,7 +230,7 @@ class TestMatchEndpoints:
 
     def test_simulate_match_missing_clubs(self, client):
         """Test match simulation with missing club IDs"""
-        incomplete_data = {"homeClubId": "home_club"}
+        incomplete_data = {"homeClubId": "550e8400-e29b-41d4-a716-446655440000"}
 
         response = client.post(
             "/matches/simulate",
@@ -228,14 +240,18 @@ class TestMatchEndpoints:
 
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert "Missing club IDs" in data["error"]
+        assert "Invalid request data" in data["error"]
+        assert "Missing required fields: awayClubId" in data["details"]
 
     def test_simulate_match_club_not_found(self, client, mock_firestore_helper):
         """Test match simulation with non-existent club"""
         with patch("app.volleyball_sim"):
             mock_firestore_helper.get_club.side_effect = [None, None]
 
-            match_data = {"homeClubId": "nonexistent1", "awayClubId": "nonexistent2"}
+            # Use valid UUIDs for club IDs
+            home_club_id = "550e8400-e29b-41d4-a716-446655440000"
+            away_club_id = "550e8400-e29b-41d4-a716-446655440001"
+            match_data = {"homeClubId": home_club_id, "awayClubId": away_club_id}
 
             response = client.post(
                 "/matches/simulate",
@@ -245,20 +261,54 @@ class TestMatchEndpoints:
 
             assert response.status_code == 404
             data = json.loads(response.data)
-            assert "Club not found" in data["error"]
+            assert "club not found" in data["error"].lower()
+
+    def test_simulate_match_invalid_club_id_format(self, client):
+        """Test match simulation with invalid club ID format"""
+        match_data = {"homeClubId": "invalid_id", "awayClubId": "also_invalid"}
+
+        response = client.post(
+            "/matches/simulate",
+            data=json.dumps(match_data),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert "Invalid club ID format" in data["error"]
+        assert "Club IDs must be valid UUIDs" in data["details"]
 
 
 class TestHealthEndpoint:
     """Test health check endpoint"""
 
-    def test_health_check(self, client):
-        """Test health check endpoint"""
+    def test_health_check_unhealthy(self, client):
+        """Test health check endpoint when services are unavailable"""
         response = client.get("/health")
 
-        assert response.status_code == 200
+        # Health endpoint should return 503 when required services are unavailable
+        assert response.status_code == 503
         data = json.loads(response.data)
-        assert data["status"] == "healthy"
+        assert data["status"] == "unhealthy"
         assert data["service"] == "volleyball-simulator"
+        assert "services" in data
+
+    def test_health_check_with_mocked_services(self, client):
+        """Test health check endpoint with mocked healthy services"""
+        with patch("app.service_status") as mock_status:
+            # Mock all services as healthy
+            mock_status.firebase_initialized = True
+            mock_status.firestore_connected = True
+            mock_status.simulator_available = True
+            mock_status.initialization_errors = []
+            mock_status.is_healthy.return_value = True
+
+            response = client.get("/health")
+
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["status"] == "healthy"
+            assert data["service"] == "volleyball-simulator"
 
 
 class TestAuthBypass:
@@ -266,8 +316,9 @@ class TestAuthBypass:
 
     def test_auth_bypass_enabled(self, client):
         """Test that auth bypass works when SKIP_AUTH is true"""
+        # Health endpoint returns 503 when services are unavailable, not related to auth
         response = client.get("/health")
-        assert response.status_code == 200
+        assert response.status_code == 503  # Services unavailable in test environment
 
     def test_auth_bypass_disabled(self):
         """Test that auth bypass only works when SKIP_AUTH is 'true'"""
