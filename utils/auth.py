@@ -14,18 +14,9 @@ import base64
 def initialize_firebase():
     """Initialize Firebase Admin SDK if not already initialized"""
     if not firebase_admin._apps:
-        firebase_key = os.getenv("FIREBASE_ADMIN_KEY")
-        if not firebase_key:
-            raise ValueError("FIREBASE_ADMIN_KEY environment variable not set")
-
         try:
-            # Decode base64 string to JSON
-            decoded_key = base64.b64decode(firebase_key).decode("utf-8")
-            cred_dict = json.loads(decoded_key)
-            cred = credentials.Certificate(cred_dict)
+            cred = credentials.ApplicationDefault()
             firebase_admin.initialize_app(cred)
-        except json.JSONDecodeError:
-            raise ValueError("Invalid FIREBASE_ADMIN_KEY format - must be valid JSON")
         except Exception as e:
             raise ValueError(f"Failed to initialize Firebase: {str(e)}")
 
